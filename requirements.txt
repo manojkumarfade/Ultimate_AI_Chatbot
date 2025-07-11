@@ -22,3 +22,4 @@ youtube_transcript_api
 langdetect
 graphviz
 pyttsx3==2.98
+libportaudio2
