@@ -14,6 +14,7 @@ import tempfile
 import urllib.parse
 import PyPDF2
 import docx
+import pyttsx3
 import speech_recognition as sr
 from bs4 import BeautifulSoup
 import random
@@ -43,13 +44,13 @@ from openai import OpenAI
 from groq import Groq
 import graphviz
 import pytesseract
+from bs4 import Tag
 
 # === API KEYS ===
-OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
-GITHUB_API_TOKEN = st.secrets["GITHUB_API_TOKEN"]
-GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
-A4F_API_KEY = st.secrets["A4F_API_KEY"]
-
+OPENROUTER_API_KEY = "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"
+GITHUB_API_TOKEN = "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"
+GROQ_API_KEY = "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"
+A4F_API_KEY = "ddc-a4f-21aeaeaebe4a41808a3c01cd4fe16b2f"
 
 # === Model Configurations ===
 model_sources = {
@@ -93,6 +94,8 @@ def get_ai_response(messages, model_preference=None):
 
     for model_name in model_try_order:
         selected_model = model_sources.get(model_name)
+        if selected_model is None:
+            continue
         try:
             if selected_model["type"] == "openrouter":
                 headers = {
@@ -183,8 +186,8 @@ conn.commit()
 # --------- SMTP Email Config ---------
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 465
-EMAIL_SENDER = st.secrets["EMAIL_SENDER"]
-EMAIL_PASSWORD = st.secrets["EMAIL_PASSWORD"]
+EMAIL_SENDER = 'betoni2316@gmail.com'
+EMAIL_PASSWORD = 'uijt hcce qprb frcr'
 
 # --------- Helper Functions ---------
 def send_verification_email(to_email, code):
@@ -280,8 +283,8 @@ chat_modes = {
 
 # -------------- Weather and News Functions --------------
 def get_weather(city="Hyderabad"):
-    OPENWEATHER_API_KEY = st.secrets["OPENWEATHER_API_KEY"]
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
+    WEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "6fa922409f28bebc0991def75a5accab")
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
@@ -531,7 +534,7 @@ def save_chat_to_db(user_input, response):
 
 def web_search(query, num=5):
     url = "https://google.serper.dev/search"   
-    SERPER_API_KEY = st.secrets["SERPER_API_KEY"]  # 🔑 Paste key here
+    SERPER_API_KEY = "be079c48e1e1df5928813172860bc4d5e73b6a16"  # 🔑 Paste key here
 
     headers = {
         "X-API-KEY": SERPER_API_KEY,
@@ -615,7 +618,8 @@ with tabs[0]:
             st.info("🎤 Listening...")
             audio = r.listen(src)
         try:
-            user_input = r.recognize_google(audio)
+            # The following is a valid method in speech_recognition, linter false positive
+            user_input = r.recognize_google(audio)  # type: ignore[attr-defined]
         except:
             st.warning("Could not recognize your voice.")
             user_input = ""
@@ -856,7 +860,8 @@ with tabs[3]:
             return "en"
     if st.button("Summarize Video") and yt_url:
         try:
-            from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+            from youtube_transcript_api._api import YouTubeTranscriptApi
+            from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
             vid_id = extract_video_id(yt_url)
             if not vid_id:
                 st.error("❌ Could not extract video ID.")
@@ -1245,25 +1250,26 @@ with tabs[10]:
                             soup = BeautifulSoup(html, "html.parser")
                             links = soup.find_all("a", href=True)
                             for l in links:
-                                href = l["href"]
-                                if href.endswith(".mp3"):
-                                    full_url = "https://archive.org" + href
-                                    mp3_data = requests.get(full_url, timeout=10).content
-                                    temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                                    with open(temp_path, "wb") as f:
-                                        f.write(mp3_data)
-                                    if add_effect:
-                                        audio = AudioSegment.from_file(temp_path)
-                                        slowed = audio.speedup(playback_speed=0.8).fade_in(500).fade_out(500)
-                                        effect_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                                        slowed.export(effect_path, format="mp3")
-                                        st.markdown(f"🎧 **{title}** (Slowed)")
-                                        st.audio(effect_path, format="audio/mp3")
-                                    else:
-                                        st.markdown(f"🎵 **{title}**")
-                                        st.audio(temp_path, format="audio/mp3")
-                                    shown += 1
-                                    break
+                                if isinstance(l, Tag):
+                                    href = l.get("href")
+                                    if href and isinstance(href, str) and href.endswith(".mp3"):
+                                        full_url = "https://archive.org" + href
+                                        mp3_data = requests.get(full_url, timeout=10).content
+                                        temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+                                        with open(temp_path, "wb") as f:
+                                            f.write(mp3_data)
+                                        if add_effect:
+                                            audio = AudioSegment.from_file(temp_path)
+                                            slowed = audio.speedup(playback_speed=0.8).fade_in(500).fade_out(500)
+                                            effect_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+                                            slowed.export(effect_path, format="mp3")
+                                            st.markdown(f"🎧 **{title}** (Slowed)")
+                                            st.audio(effect_path, format="audio/mp3")
+                                        else:
+                                            st.markdown(f"🎵 **{title}**")
+                                            st.audio(temp_path, format="audio/mp3")
+                                        shown += 1
+                                        break
                         elif url.endswith(".mp3"):
                             mp3_data = requests.get(url, timeout=10).content
                             temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
