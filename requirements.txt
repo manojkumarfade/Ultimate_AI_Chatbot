@@ -22,3 +22,4 @@ youtube-transcript-api==1.1.1
 langdetect==1.0.9
 graphviz==0.21
 pyttsx3==2.98
+matplotlib==3.9.2
