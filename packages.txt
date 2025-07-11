@@ -2,3 +2,5 @@ libportaudio2
 libasound-dev
 espeak
 ffmpeg
+libfreetype6-dev
+libpng-dev
