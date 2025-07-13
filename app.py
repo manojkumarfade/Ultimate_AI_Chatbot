@@ -48,7 +48,7 @@ from bs4 import Tag
 import toml
 
 # Load secrets from secrets.toml
-secrets = toml.load("secrets.toml")
+#secrets = toml.load("secrets.toml")
 
 # === API KEYS ===
 OPENROUTER_API_KEY = secrets["openrouter"]["token"]
