@@ -51,13 +51,13 @@ import toml
 #secrets = toml.load("secrets.toml")
 
 # === API KEYS ===
-OPENROUTER_API_KEY = secrets["openrouter"]["token"]
-GITHUB_API_TOKEN = secrets["github"]["token"]
-GROQ_API_KEY = secrets["groq"]["token"]
-A4F_API_KEY = secrets["a4f"]["token"]
-WEATHER_API_KEY = secrets["weather"]["token"]
-EMAIL_SENDER = secrets["email"]["sender"]
-EMAIL_PASSWORD = secrets["email"]["password"]
+OPENROUTER_API_KEY = st.secrets["openrouter"]["token"]
+GITHUB_API_TOKEN = st.secrets["github"]["token"]
+GROQ_API_KEY = st.secrets["groq"]["token"]
+A4F_API_KEY = st.secrets["a4f"]["token"]
+WEATHER_API_KEY = st.secrets["weather"]["token"]
+EMAIL_SENDER = st.secrets["email"]["sender"]
+EMAIL_PASSWORD = st.secrets["email"]["password"]
 
 # === Model Configurations ===
 model_sources = {
