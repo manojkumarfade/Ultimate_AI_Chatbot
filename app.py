@@ -52,13 +52,13 @@ import toml
 
 # === API KEYS ===
 OPENROUTER_API_KEY = st.secrets["openrouter"]["token"]
-GITHUB_API_TOKEN = st.secrets["github"]["token"]
-GROQ_API_KEY = st.secrets["groq"]["token"]
-A4F_API_KEY = st.secrets["a4f"]["token"]
-WEATHER_API_KEY = st.secrets["weather"]["token"]
-EMAIL_SENDER = st.secrets["email"]["sender"]
-EMAIL_PASSWORD = st.secrets["email"]["password"]
-
+GITHUB_API_TOKEN   = st.secrets["github"]["token"]
+GROQ_API_KEY       = st.secrets["groq"]["token"]
+A4F_API_KEY        = st.secrets["a4f"]["token"]
+WEATHER_API_KEY    = st.secrets["weather"]["token"]
+EMAIL_SENDER       = st.secrets["email"]["sender"]
+EMAIL_PASSWORD     = st.secrets["email"]["password"]
+WEBSEARCH_API_KEY  = st.secrets["websearch"]["token"]
 # === Model Configurations ===
 model_sources = {
     "GitHub GPT-4.1": {
