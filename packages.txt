@@ -1,2 +1,6 @@
 libportaudio2
-tesseract-ocr
+libasound-dev
+espeak
+ffmpeg
+libfreetype6-dev
+libpng-dev
