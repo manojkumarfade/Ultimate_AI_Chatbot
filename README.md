@@ -33,7 +33,7 @@ ultimate_ai_chatbot/
 ├── saved_chats/         # Local chat history (excluded from GitHub)
 └── secrets.toml         # Your API keys (DO NOT commit this)
 
-## 💻 Local Run
+💻 Local Run
 
 git clone https://github.com/yourusername/ultimate_ai_chatbot.git
 cd ultimate_ai_chatbot
