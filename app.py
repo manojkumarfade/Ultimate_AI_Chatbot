@@ -244,6 +244,87 @@ st.set_page_config(page_title="🧠 AI Chatbot All-in-One", layout="wide")
 # ====== 🪐 Space & Modern UI Effects Injection ======
 st.markdown('''
 <style>
+.gradient-btn, button[data-testid="baseButton"], .stButton>button {
+    background: rgba(255,255,255,0.13);
+    background: linear-gradient(270deg, rgba(162,89,255,0.33), rgba(0,212,255,0.22), rgba(255,110,196,0.18), rgba(162,89,255,0.33));
+    background-size: 600% 600%;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 16px !important;
+    font-weight: 700;
+    box-shadow: 0 2px 12px #a259ff44, 0 4px 24px #00d4ff22;
+    transition: box-shadow 0.3s, transform 0.2s;
+    animation: gradientMove 8s ease-in-out infinite;
+    backdrop-filter: blur(8px) saturate(1.2);
+    outline: none !important;
+}
+.gradient-btn:hover, button[data-testid="baseButton"]:hover, .stButton>button:hover {
+    box-shadow: 0 6px 24px #a259ff88, 0 4px 24px #00d4ff55;
+    transform: translateY(-2px) scale(1.04);
+    background: linear-gradient(90deg,#5f5fff,#b68cff,#00d4ff,#ff6ec4,#a259ff); 
+    background-size: 600% 600%;
+}
+.glass-card {
+    background: rgba(30,16,64,0.35) !important;
+    border: 2px solid #a259ff44 !important;
+    border-radius: 24px !important;
+    box-shadow: 0 8px 32px 0 #a259ff22, 0 2px 8px 0 #0002;
+    backdrop-filter: blur(8px) saturate(1.1);
+    transition: box-shadow 0.3s, border 0.3s;
+    padding: 1.1rem 1.6rem 1.1rem 1.6rem;
+    margin-bottom: 1.2rem;
+}
+.glass-card:hover {
+    border: 2.5px solid #a259ffbb !important;
+    box-shadow: 0 12px 36px 0 #a259ff55, 0 2px 8px 0 #0003;
+}
+.info-icon {
+    display: inline-block;
+    margin-left: 6px;
+    color: #a259ff;
+    background: rgba(162,89,255,0.14);
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    text-align: center;
+    font-size: 14px;
+    cursor: pointer;
+    position: relative;
+}
+.info-icon:hover .tooltip {
+    display: block;
+}
+.tooltip {
+    display: none;
+    position: absolute;
+    left: 22px;
+    top: -2px;
+    z-index: 99;
+    background: rgba(30,16,64,0.92);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.98rem;
+    box-shadow: 0 2px 12px #a259ff44;
+    white-space: pre-line;
+    min-width: 120px;
+    max-width: 320px;
+}
+@keyframes gradientMove {
+    0% {background-position:0% 50%}
+    50% {background-position:100% 50%}
+    100% {background-position:0% 50%}
+}
+</style>
+''', unsafe_allow_html=True)
+
+def info_icon(tooltip_text, key=None):
+    """Render an info icon with a tooltip and return HTML as string."""
+    icon_html = f'''<span class="info-icon" tabindex="0">&#9432;<span class="tooltip">{tooltip_text}</span></span>'''
+    return icon_html
+
+st.markdown('''
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Montserrat:wght@700&family=Poppins:wght@600&display=swap');
 html, body, [class*="css"] {
     font-family: 'Poppins', 'Montserrat', 'Inter', sans-serif !important;
@@ -1097,6 +1178,105 @@ tabs = st.tabs([
     "🛠️ AI Tools", "🎮 Game Center", "🩺 Health Assistant"
 ])
 
+# ================= ENHANCED FEATURES ===================
+# --- Theme Toggle ---
+theme = st.session_state.get("theme", "auto")
+theme = st.selectbox("Theme", ["auto", "light", "dark"], index=["auto", "light", "dark"].index(theme), key="theme_toggle")
+st.session_state.theme = theme
+st.markdown(f"<style>body {{ background: {'#232323' if theme=='dark' else '#fff'}; }}</style>", unsafe_allow_html=True)
+
+# --- Collapsible Chat History ---
+show_history = st.session_state.get("show_history", True)
+if st.button("📜 Toggle Chat History", key="toggle_history_btn"):
+    st.session_state.show_history = not show_history
+show_history = st.session_state.get("show_history", True)
+
+# --- Profile/Settings Modal ---
+with st.expander("👤 Profile & Settings", expanded=False):
+    st.write(f"**User:** {st.session_state.get('email', 'Guest')}")
+    st.write("**Achievements:**", st.session_state.get("achievements", []))
+    st.write("**Theme:**", st.session_state.get("theme", "auto"))
+    st.write("**Chats:**", len(st.session_state.get("history", [])))
+    st.write("(More settings coming soon!)")
+
+# --- Daily AI Challenge/Quiz ---
+with st.expander("🎯 Daily AI Challenge", expanded=False):
+    quiz = st.session_state.get("daily_quiz", {
+        "q": "What is the capital of France?",
+        "a": "Paris"
+    })
+    if not isinstance(quiz, dict):
+        quiz = {
+            "q": "What is the capital of France?",
+            "a": "Paris"
+        }
+    st.write(f"**Today's Quiz:** {quiz['q']}")
+    user_ans = st.text_input("Your Answer", key="daily_quiz")
+    if user_ans and user_ans.lower().strip() == quiz["a"].lower():
+        st.success("Correct! 🏆")
+        st.session_state.achievements = st.session_state.get("achievements", []) + ["Daily Quiz Winner"]
+    elif user_ans:
+        st.warning("Try again!")
+
+# --- Chat Analytics Dashboard ---
+with st.expander("📊 Chat Analytics", expanded=False):
+    hist = st.session_state.get("history", [])
+    st.write(f"**Total Messages:** {len(hist)}")
+    st.write(f"**Unique Days Active:** {len(set([str(m[2])[:10] if len(m)>2 else 'today' for m in hist]))}")
+    st.write(f"**Achievements:** {st.session_state.get('achievements', [])}")
+    # (Extend with more analytics as needed)
+
+# --- Chat History with Avatars, Reactions, Voice, Quick Actions, Feedback ---
+if show_history:
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    for i, (q, a, *rest) in enumerate(st.session_state.get("history", [])):
+        st.markdown(f'<div class="msg-right"><img src="https://api.dicebear.com/7.x/personas/svg?seed=user" width="32" style="vertical-align:middle;border-radius:50%;margin-right:8px;"> {q}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="msg-left"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=bot" width="32" style="vertical-align:middle;border-radius:50%;margin-right:8px;"> {a}', unsafe_allow_html=True)
+        # Emoji reactions (safe session_state handling)
+        like_key = f"like_{i}"
+        dislike_key = f"dislike_{i}"
+        if like_key not in st.session_state:
+            st.session_state[like_key] = 0
+        if dislike_key not in st.session_state:
+            st.session_state[dislike_key] = 0
+        if st.button("👍", key=like_key):
+            st.session_state[like_key] += 1
+        if st.button("👎", key=dislike_key):
+            st.session_state[dislike_key] += 1
+        st.write(f"Likes: {st.session_state.get(like_key, 0)} | Dislikes: {st.session_state.get(dislike_key, 0)}")
+        # Voice output
+        if st.button("🔊 Listen", key=f"tts_{i}"):
+            tts = gTTS(a)
+            tts.save("bot_voice.mp3")
+            audio_file = open("bot_voice.mp3", "rb")
+            st.audio(audio_file.read(), format="audio/mp3")
+        # Quick actions
+        st.write("Quick Actions:")
+        if st.button("Summarize", key=f"summarize_{i}"): st.info("(Stub) Summary: " + a[:50] + "...")
+        if st.button("Translate", key=f"translate_{i}"): st.info("(Stub) Translation: " + a)
+        if st.button("Explain", key=f"explain_{i}"): st.info("(Stub) Explanation: " + a)
+        # Feedback
+        st.write("Rate this response:")
+        rating = st.slider("", 1, 5, 3, key=f"rating_{i}")
+        st.session_state[f"rating_{i}"] = rating
+        st.write(f"Your rating: {rating}")
+        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div id="scroll-bottom" class="scroll-bottom"></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('''<script>var chatBottom = document.getElementById('scroll-bottom');if (chatBottom) { chatBottom.scrollIntoView({behavior: "smooth"}); }</script>''', unsafe_allow_html=True)
+
+# --- Bot Typing Indicator (stub, to be triggered on response fetch) ---
+if st.session_state.get("bot_typing", False):
+    st.info("🤖 Bot is typing...")
+
+# --- Accessibility Improvements ---
+st.markdown("<style>:focus {outline: 2px solid #a259ff !important;} .chat-container {font-size: 1.1rem;} .msg-right,.msg-left {padding: 8px 16px;margin: 8px 0;border-radius: 14px;max-width: 70%;display: inline-block;} .msg-right {background: #a259ff22;float: right;clear: both;} .msg-left {background: #23232322;float: left;clear: both;} </style>", unsafe_allow_html=True)
+
+# --- Stubs for future features ---
+# - Plugin system, PWA, encryption, API/webhook, calendar integration, E2E encryption, etc.
+#   (See comments for future modularization.)
+# ======================================================
+
 # ========== 🅰️ CHAT TAB: Persona-Aware ==========
 with tabs[0]:
     st.subheader("💬 Ask Anything")
@@ -1415,13 +1595,21 @@ with tabs[2]:
             image_prompt = slide_data.get("image_prompt")
             if image_prompt:
                 try:
-                    url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(image_prompt)}"  
+                    url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(image_prompt)}"
                     response = requests.get(url)
                     img = Image.open(BytesIO(response.content))
                     img_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
                     img.save(img_path.name)
-                    pdf.image(img_path.name, x=10, y=None, w=180)
-                except:
+                    # Always insert image below text, with at least 8 units gap
+                    y_now = pdf.get_y()
+                    img_height = 60  # Approximate, will scale
+                    if y_now + img_height + 15 > 280:
+                        pdf.add_page()
+                        y_now = pdf.get_y()
+                    pdf.ln(8)
+                    pdf.image(img_path.name, x=10, y=y_now+8, w=180)
+                    pdf.ln(img_height+8)
+                except Exception:
                     pdf.cell(0, 10, "[Image could not be generated]", ln=True)
             pdf.add_page()
         return pdf
@@ -1569,14 +1757,28 @@ with tabs[6]:
         else:
             st.warning("❌ No cached weather data available")
     st.markdown("### 🗞️ Top Headlines (Google News)")
+    # Date-based cache for daily headlines
+    today_str = today.strftime('%Y-%m-%d')
+    cached_date = st.session_state.get('news_cache_date')
+    cached_headlines = load_cached_data("news", "headlines") if cached_date == today_str else None
+
     if st.session_state.is_online:
-        headlines = get_news_from_rss()
-        if headlines:
-            for news in headlines:
-                st.markdown(f"**[{news['title']}]({news['link']})**")
-            cache_data(headlines, "news", "headlines")
+        if not cached_headlines:
+            headlines = get_news_from_rss()
+            if headlines:
+                for news in headlines:
+                    st.markdown(f"**[{news['title']}]({news['link']})**")
+                cache_data(headlines, "news", "headlines")
+                st.session_state['news_cache_date'] = today_str
+            else:
+                st.error("❌ No headlines available")
         else:
-            st.error("❌ No headlines available")
+            st.info("📰 Cached Headlines (Today):")
+            for news in cached_headlines:
+                if isinstance(news, dict) and 'title' in news and 'link' in news:
+                    st.markdown(f"**[{news['title']}]({news['link']})**")
+                else:
+                    st.write(news)
     else:
         cached_headlines = get_offline_news()
         if cached_headlines:
@@ -1793,25 +1995,49 @@ with tabs[10]:
         else:
             st.error("⚠️ Please fill in at least your Name, Email, and Phone.")
 
-
-
     # 4. AI-powered Language Learning
-    st.subheader("🌏 AI-powered Language Learning")
+    st.subheader("🌏 AI-powered Language Learning " + info_icon("Practice conversation, grammar correction, and vocabulary quizzes with AI."))
     st.write("Practice conversation, get grammar corrections, and vocabulary quizzes.")
-    lang_practice = st.text_area("Say something in English or your target language:")
-    lang_target = st.selectbox("Target Language", ["English", "Hindi", "Telugu", "Tamil", "French", "Spanish", "German", "Chinese"])
-    if st.button("Practice Conversation"):
-        if lang_practice.strip():
-            messages = [{"role": "user", "content": f"Correct my sentence and reply in {lang_target}: {lang_practice}"}]
-            response, model_used = get_ai_response(messages)
-            st.markdown(f"**🤖 Response from {model_used}:**\n\n{response}")
-            speak_translated_text(response, lang="en" if lang_target=="English" else "hi" if lang_target=="Hindi" else "te" if lang_target=="Telugu" else "ta" if lang_target=="Tamil" else "en")
-    quiz_word = st.text_input("Word for Vocabulary Quiz")
-    if st.button("Get Quiz"):
-        if quiz_word.strip():
-            messages = [{"role": "user", "content": f"Give me a vocabulary quiz for the word '{quiz_word}' in {lang_target}."}]
-            response, model_used = get_ai_response(messages)
-            st.markdown(f"**🤖 Quiz from {model_used}:**\n\n{response}")
+
+    # Conversation Practice
+    with st.container():
+        st.markdown('<div class="glass-card" style="padding:16px;">', unsafe_allow_html=True)
+        st.markdown("**Practice Conversation** " + info_icon("Type a message in your target language. The AI will correct and reply in that language."), unsafe_allow_html=True)
+        lang_practice = st.text_area("Say something in English or your target language:", key="lang_practice")
+        lang_target = st.selectbox("Target Language", ["English", "Hindi", "Telugu", "Tamil", "French", "Spanish", "German", "Chinese"], key="lang_target")
+        if st.button("Practice Conversation", key="btn_practice_conv"):
+            if lang_practice.strip():
+                messages = [{"role": "user", "content": f"Correct my sentence and reply in {lang_target}: {lang_practice}"}]
+                response, model_used = get_ai_response(messages)
+                st.markdown(f"**🤖 Response from {model_used}:**\n\n{response}")
+                speak_translated_text(response, lang="en" if lang_target=="English" else "hi" if lang_target=="Hindi" else "te" if lang_target=="Telugu" else "ta" if lang_target=="Tamil" else "en")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Explicit Grammar Correction
+    with st.container():
+        st.markdown('<div class="glass-card" style="padding:16px;">', unsafe_allow_html=True)
+        st.markdown("**Grammar Correction** " + info_icon("Paste a sentence or paragraph. The AI will correct grammar, punctuation, and suggest improvements."), unsafe_allow_html=True)
+        grammar_input = st.text_area("Enter text for grammar correction:", key="grammar_input")
+        if st.button("Correct Grammar", key="btn_grammar_corr"):
+            if grammar_input.strip():
+                messages = [{"role": "user", "content": f"Correct all grammar, punctuation, and suggest improvements for: {grammar_input}"}]
+                response, model_used = get_ai_response(messages)
+                st.markdown(f"**📝 Corrected by {model_used}:**\n\n{response}")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Vocabulary Quiz (Enhanced)
+    with st.container():
+        st.markdown('<div class="glass-card" style="padding:16px;">', unsafe_allow_html=True)
+        st.markdown("**Vocabulary Quiz** " + info_icon("Test your vocabulary with MCQ or fill-in-the-blank quizzes. Choose format and language."), unsafe_allow_html=True)
+        quiz_word = st.text_input("Word for Vocabulary Quiz", key="quiz_word")
+        quiz_format = st.radio("Quiz Format", ["Multiple Choice", "Fill in the Blank"], horizontal=True, key="quiz_format")
+        if st.button("Get Quiz", key="btn_get_quiz"):
+            if quiz_word.strip():
+                prompt = f"Give me a {quiz_format.lower()} vocabulary quiz for the word '{quiz_word}' in {lang_target}. Provide the answer and a short explanation."
+                messages = [{"role": "user", "content": prompt}]
+                response, model_used = get_ai_response(messages)
+                st.markdown(f"**🤖 Quiz from {model_used}:**\n\n{response}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -1861,58 +2087,62 @@ with tabs[10]:
                             seen_titles.add(title)
 
             if not playable_urls:
-                st.warning("No playable MP3 links found. Try a different mood or keyword.")
-            else:
-                import urllib.request
-                random.shuffle(playable_urls)
-                shown = 0
-                for title, url in playable_urls:
-                    if shown >= num_results:
-                        break
-                    try:
-                        if "/details/" in url:
-                            html = requests.get(url, timeout=8).text
-                            soup = BeautifulSoup(html, "html.parser")
-                            links = soup.find_all("a", href=True)
-                            for l in links:
-                                if isinstance(l, Tag):
-                                    href = l.get("href")
-                                    if href and isinstance(href, str) and href.endswith(".mp3"):
-                                        full_url = "https://archive.org" + href
-                                        mp3_data = requests.get(full_url, timeout=10).content
-                                        temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                                        with open(temp_path, "wb") as f:
-                                            f.write(mp3_data)
-                                        if add_effect:
-                                            audio = AudioSegment.from_file(temp_path)
-                                            slowed = audio.speedup(playback_speed=0.8).fade_in(500).fade_out(500)
-                                            effect_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                                            slowed.export(effect_path, format="mp3")
-                                            st.markdown(f"🎧 **{title}** (Slowed)")
-                                            st.audio(effect_path, format="audio/mp3")
-                                        else:
-                                            st.markdown(f"🎵 **{title}**")
-                                            st.audio(temp_path, format="audio/mp3")
-                                        shown += 1
-                                        break
-                        elif url.endswith(".mp3"):
-                            mp3_data = requests.get(url, timeout=10).content
-                            temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                            with open(temp_path, "wb") as f:
-                                f.write(mp3_data)
-                            if add_effect:
-                                audio = AudioSegment.from_file(temp_path)
-                                slowed = audio.speedup(playback_speed=0.8).fade_in(500).fade_out(500)
-                                effect_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-                                slowed.export(effect_path, format="mp3")
-                                st.markdown(f"🎧 **{title}** (Slowed)")
-                                st.audio(effect_path, format="audio/mp3")
-                            else:
-                                st.markdown(f"🎵 **{title}**")
-                                st.audio(temp_path, format="audio/mp3")
-                            shown += 1
-                    except:
-                        continue
+                # Fallback: Curated local recommendations
+                curated_songs = {
+                    "Happy": [
+                        {"title": "Happy", "artist": "Pharrell Williams", "img": "https://upload.wikimedia.org/wikipedia/en/9/92/Pharrell_Williams_-_Happy.jpg", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"},
+                        {"title": "Best Day Of My Life", "artist": "American Authors", "img": "https://upload.wikimedia.org/wikipedia/en/6/6b/American_Authors_Best_Day_of_My_Life.jpg", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"}
+                    ],
+                    "Sad": [
+                        {"title": "Someone Like You", "artist": "Adele", "img": "https://upload.wikimedia.org/wikipedia/en/9/9b/Adele_-_Someone_Like_You.png", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"}
+                    ],
+                    "Energetic": [
+                        {"title": "Stronger", "artist": "Kanye West", "img": "https://upload.wikimedia.org/wikipedia/en/6/6c/Kanye_West_-_Stronger.jpg", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"}
+                    ],
+                    "Relaxed": [
+                        {"title": "Weightless", "artist": "Marconi Union", "img": "https://upload.wikimedia.org/wikipedia/en/3/3c/Marconi_Union_Weightless.jpg", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"}
+                    ],
+                    "Romantic": [
+                        {"title": "Perfect", "artist": "Ed Sheeran", "img": "https://upload.wikimedia.org/wikipedia/en/4/45/Ed_Sheeran_Perfect_Single_cover.jpg", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"}
+                    ],
+                    "Motivated": [
+                        {"title": "Eye of the Tiger", "artist": "Survivor", "img": "https://upload.wikimedia.org/wikipedia/en/9/9e/Survivor_Eye_of_the_Tiger_single_cover.jpg", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"}
+                    ],
+                    "Party": [
+                        {"title": "Uptown Funk", "artist": "Mark Ronson ft. Bruno Mars", "img": "https://upload.wikimedia.org/wikipedia/en/b/b7/Mark_Ronson_-_Uptown_Funk_%28feat._Bruno_Mars%29.png", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"}
+                    ],
+                    "Chill": [
+                        {"title": "Sunset Lover", "artist": "Petit Biscuit", "img": "https://upload.wikimedia.org/wikipedia/en/7/7d/Petit_Biscuit_-_Sunset_Lover.png", "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"}
+                    ]
+                }
+                mood_songs = curated_songs.get(mood, [])
+                if mood_songs:
+                    st.info("🎶 No online results. Showing curated recommendations:")
+                    for song in mood_songs[:num_results]:
+                        st.markdown(f"""**{song['title']}**  
+Artist: {song['artist']}""")
+                        st.audio(song["url"], format="audio/mp3")
+                else:
+                    st.warning("No curated songs available for this mood.")
+            for title, url in playable_urls[:num_results]:
+                try:
+                    mp3_data = requests.get(url).content
+                    temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+                    with open(temp_path, "wb") as f:
+                        f.write(mp3_data)
+                    if add_effect:
+                        audio = AudioSegment.from_file(temp_path)
+                        slowed = audio.speedup(playback_speed=0.8).fade_in(500).fade_out(500)
+                        effect_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+                        slowed.export(effect_path, format="mp3")
+                        st.markdown(f"🎧 **{title}** (Slowed)")
+                        st.audio(effect_path, format="audio/mp3")
+                    else:
+                        st.markdown(f"🎵 **{title}**")
+                        st.audio(temp_path, format="audio/mp3")
+                    shown += 1
+                except:
+                    continue
         except Exception as e:
             st.error(f"❌ Failed to fetch songs: {e}")
 
