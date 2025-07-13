@@ -65,42 +65,42 @@ model_sources = {
         "type": "github",
         "model": "openai/gpt-4.1",
         "base_url": "https://models.github.ai/inference",
-        "api_key": secrets["github"]["token"]
+        "api_key": st.secrets["github"]["token"]
     },
     "Groq Llama 4 Maverick": {
         "type": "groq",
         "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "api_key": secrets["groq"]["token"]
+        "api_key": st.secrets["groq"]["token"]
     },
     "OpenRouter DeepSeek Chat v3": {
         "type": "openrouter",
         "model": "deepseek/deepseek-chat-v3-0324:free",
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": secrets["openrouter"]["token"]
+        "api_key": st.secrets["openrouter"]["token"]
     },
     "OpenRouter DeepSeek R1": {
         "type": "openrouter",
         "model": "deepseek/deepseek-r1:free",
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": secrets["openrouter"]["token"]
+        "api_key": st.secrets["openrouter"]["token"]
     },
     "A4F Qwen3-235B": {
         "type": "a4f",
         "model": "provider-5/Qwen/Qwen3-235B-A22B",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": secrets["a4f"]["token"]
+        "api_key": st.secrets["a4f"]["token"]
     },
     "A4F Grok-4-0709": {
         "type": "a4f",
         "model": "provider-3/grok-4-0709",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": secrets["a4f"]["token"]
+        "api_key": st.secrets["a4f"]["token"]
     },
     "A4F Gemini-2.5-Flash": {
         "type": "a4f",
         "model": "provider-5/gemini-2.5-flash-preview-04-17",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": secrets["a4f"]["token"]
+        "api_key": st.secrets["a4f"]["token"]
     }
 }
 
