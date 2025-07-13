@@ -45,38 +45,62 @@ from groq import Groq
 import graphviz
 import pytesseract
 from bs4 import Tag
+import toml
+
+# Load secrets from secrets.toml
+secrets = toml.load("secrets.toml")
 
 # === API KEYS ===
-OPENROUTER_API_KEY = "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"
-GITHUB_API_TOKEN = "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"
-GROQ_API_KEY = "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"
-A4F_API_KEY = "ddc-a4f-21aeaeaebe4a41808a3c01cd4fe16b2f"
+OPENROUTER_API_KEY = secrets["openrouter"]["token"]
+GITHUB_API_TOKEN = secrets["github"]["token"]
+GROQ_API_KEY = secrets["groq"]["token"]
+A4F_API_KEY = secrets["a4f"]["token"]
+WEATHER_API_KEY = secrets["weather"]["token"]
+EMAIL_SENDER = secrets["email"]["sender"]
+EMAIL_PASSWORD = secrets["email"]["password"]
 
 # === Model Configurations ===
 model_sources = {
-    "🧠 DeepSeek Chat v3": {
-        "type": "openrouter",
-        "model": "deepseek/deepseek-chat-v3-0324:free"
-    },
-    "🚀 DeepSeek R1 (0528)": {
-        "type": "openrouter",
-        "model": "deepseek/deepseek-r1-0528:free"
-    },
-    "🧬 DeepSeek R1": {
-        "type": "openrouter",
-        "model": "deepseek/deepseek-r1:free"
-    },
-    "🐙 GitHub GPT-4.1": {
+    "GitHub GPT-4.1": {
         "type": "github",
-        "model": "openai/gpt-4.1"
+        "model": "openai/gpt-4.1",
+        "base_url": "https://models.github.ai/inference",
+        "api_key": secrets["github"]["token"]
     },
-    "🛸 Groq - Gemma2 9B": {
+    "Groq Llama 4 Maverick": {
         "type": "groq",
-        "model": "gemma2-9b-it"
+        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "api_key": secrets["groq"]["token"]
     },
-    "⚡ A4F - Qwen-3-235B": {
+    "OpenRouter DeepSeek Chat v3": {
+        "type": "openrouter",
+        "model": "deepseek/deepseek-chat-v3-0324:free",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key": secrets["openrouter"]["token"]
+    },
+    "OpenRouter DeepSeek R1": {
+        "type": "openrouter",
+        "model": "deepseek/deepseek-r1:free",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key": secrets["openrouter"]["token"]
+    },
+    "A4F Qwen3-235B": {
         "type": "a4f",
-        "model": "provider-5/Qwen/Qwen3-235B-A22B"
+        "model": "provider-5/Qwen/Qwen3-235B-A22B",
+        "base_url": "https://api.a4f.co/v1",
+        "api_key": secrets["a4f"]["token"]
+    },
+    "A4F Grok-4-0709": {
+        "type": "a4f",
+        "model": "provider-3/grok-4-0709",
+        "base_url": "https://api.a4f.co/v1",
+        "api_key": secrets["a4f"]["token"]
+    },
+    "A4F Gemini-2.5-Flash": {
+        "type": "a4f",
+        "model": "provider-5/gemini-2.5-flash-preview-04-17",
+        "base_url": "https://api.a4f.co/v1",
+        "api_key": secrets["a4f"]["token"]
     }
 }
 
@@ -186,8 +210,6 @@ conn.commit()
 # --------- SMTP Email Config ---------
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 465
-EMAIL_SENDER = 'betoni2316@gmail.com'
-EMAIL_PASSWORD = 'uijt hcce qprb frcr'
 
 # --------- Helper Functions ---------
 def send_verification_email(to_email, code):
@@ -218,6 +240,461 @@ def is_strong_password(password):
 SAVE_DIR = "saved_chats"
 os.makedirs(SAVE_DIR, exist_ok=True)
 st.set_page_config(page_title="🧠 AI Chatbot All-in-One", layout="wide")
+
+# ====== 🪐 Space & Modern UI Effects Injection ======
+st.markdown('''
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Montserrat:wght@700&family=Poppins:wght@600&display=swap');
+html, body, [class*="css"] {
+    font-family: 'Poppins', 'Montserrat', 'Inter', sans-serif !important;
+    background: #0e1021 !important;
+    color: #ececff;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+/* Nebula background */
+body::before {
+    content: "";
+    position: fixed;
+    z-index: -3;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: radial-gradient(ellipse at 60% 40%, #6e00ff88 0%, #00d4ff44 50%, #0e1021 100%);
+    animation: nebulaMove 24s linear infinite alternate;
+    filter: blur(8px) brightness(1.1) saturate(1.3);
+}
+@keyframes nebulaMove {
+    0% { transform: scale(1) rotate(0deg); }
+    100% { transform: scale(1.2) rotate(8deg); }
+}
+/* Glassmorphism card */
+.stContainer, .glass-card {
+    background: rgba(30,16,64,0.35) !important;
+    border: 2px solid #a259ff44 !important;
+    border-radius: 24px !important;
+    box-shadow: 0 8px 32px 0 #a259ff22, 0 2px 8px 0 #0002;
+    backdrop-filter: blur(8px) saturate(1.1);
+    transition: box-shadow 0.3s, border 0.3s;
+}
+.stContainer:hover, .glass-card:hover {
+    border: 2.5px solid #a259ffbb !important;
+    box-shadow: 0 12px 36px 0 #a259ff55, 0 2px 8px 0 #0003;
+}
+/* Gradient animated button */
+.gradient-btn, button[data-testid="baseButton"] {
+    background: linear-gradient(270deg, #a259ff, #00d4ff, #ff6ec4, #a259ff);
+    background-size: 600% 600%;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 16px !important;
+    font-weight: 700;
+    box-shadow: 0 2px 12px #a259ff44;
+    transition: box-shadow 0.3s, transform 0.2s;
+    animation: gradientMove 8s ease-in-out infinite;
+}
+.gradient-btn:hover, button[data-testid="baseButton"]:hover {
+    box-shadow: 0 6px 24px #a259ff88;
+    transform: translateY(-2px) scale(1.04);
+}
+@keyframes gradientMove {
+    0% {background-position:0% 50%}
+    50% {background-position:100% 50%}
+    100% {background-position:0% 50%}
+}
+/* Pulse glow for interactive elements */
+.pulse-glow, .gradient-btn:active, button[data-testid="baseButton"]:active {
+    box-shadow: 0 0 16px 4px #a259ffcc, 0 2px 8px #0002;
+    animation: pulse 1.2s infinite alternate;
+}
+@keyframes pulse {
+    from { box-shadow: 0 0 8px 0 #a259ff88; }
+    to { box-shadow: 0 0 24px 8px #00d4ff88; }
+}
+/* Gradient text */
+.gradient-text, .stTitle, .stMarkdown h1, h1, h2, h3 {
+    background: linear-gradient(90deg, #a259ff, #00d4ff, #ff6ec4, #a259ff);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientMove 8s ease-in-out infinite;
+    font-family: 'Montserrat', 'Poppins', 'Inter', sans-serif !important;
+}
+/* Smooth transitions */
+*, *:before, *:after {
+    transition: all 0.25s cubic-bezier(.4,2,.6,1) !important;
+}
+</style>
+<!-- Starfield and floating particles canvas -->
+<canvas id="starfield-bg" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-2;pointer-events:none;"></canvas>
+<script>
+const canvas = document.getElementById('starfield-bg');
+const ctx = canvas.getContext('2d');
+let w = window.innerWidth, h = window.innerHeight;
+canvas.width = w; canvas.height = h;
+let stars = Array.from({length:120},()=>({
+    x:Math.random()*w, y:Math.random()*h, z:Math.random()*w, o:Math.random(),
+    r:Math.random()*1.1+0.3, speed:Math.random()*0.7+0.2, angle:Math.random()*6.28
+}));
+let particles = Array.from({length:16},()=>({
+    x:Math.random()*w, y:Math.random()*h, vx:Math.random()*2-1, vy:Math.random()*2-1, r:Math.random()*8+7, a:Math.random()*360
+}));
+function drawStarfield(){
+    ctx.clearRect(0,0,w,h);
+    // Nebula overlay
+    let grad = ctx.createRadialGradient(w/2,h/2,Math.min(w,h)/8,w/2,h/2,Math.max(w,h)/1.1);
+    grad.addColorStop(0,"#6e00ff33"); grad.addColorStop(0.3,"#00d4ff22"); grad.addColorStop(1,"#0e1021");
+    ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+    // Rotating stars
+    let time = Date.now()/12000;
+    for(let s of stars){
+        let angle = s.angle + time;
+        let x = w/2 + (s.x-w/2)*Math.cos(angle)-(s.y-h/2)*Math.sin(angle);
+        let y = h/2 + (s.x-w/2)*Math.sin(angle)+(s.y-h/2)*Math.cos(angle);
+        ctx.globalAlpha = s.o*0.7+0.3;
+        ctx.beginPath(); ctx.arc(x,y,s.r,0,2*Math.PI); ctx.fillStyle="#fff"; ctx.fill();
+    }
+    // Floating particles
+    for(let p of particles){
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate((p.a+time*50)*Math.PI/180);
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(0,0,p.r,0,2*Math.PI);
+        ctx.fillStyle = ctx.createRadialGradient(0,0,0,0,0,p.r);
+        ctx.fillStyle.addColorStop(0,"#fff");
+        ctx.fillStyle.addColorStop(0.5,"#a259ff");
+        ctx.fillStyle.addColorStop(1,"#00d4ff00");
+        ctx.fill();
+        ctx.restore();
+        p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.vy *= 0.99; p.a += 0.2;
+        if(p.x<0||p.x>w) p.vx*=-1;
+        if(p.y<0||p.y>h) p.vy*=-1;
+    }
+    ctx.globalAlpha = 1.0;
+    requestAnimationFrame(drawStarfield);
+}
+drawStarfield();
+window.addEventListener('resize',()=>{w=window.innerWidth;h=window.innerHeight;canvas.width=w;canvas.height=h;});
+</script>
+''', unsafe_allow_html=True)
+# ====== END Space & Modern UI Effects Injection ======
+st.markdown('''
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+    html, body, [class*="css"]  {
+        font-family: 'Inter', sans-serif !important;
+        background: #181818 !important;
+        color: #232323;
+    }
+    .chat-container {
+        background: #232323ee;
+        border-radius: 20px;
+        box-shadow: 0 4px 32px 0 #00000044;
+        padding: 20px 14px 20px 14px;
+        margin-bottom: 10px;
+        max-height: 520px;
+        overflow-y: auto;
+        position: relative;
+    }
+    .msg-left {
+        background: #fff;
+        color: #232323;
+        border-radius: 16px 16px 16px 6px;
+        padding: 13px 18px;
+        margin: 10px 0;
+        max-width: 70%;
+        float: left;
+        clear: both;
+        box-shadow: 0 2px 12px 0 #00000020;
+        font-size: 1.08rem;
+
+    }
+    .msg-right {
+        background: #fff;
+        color: #232323;
+        border-radius: 16px 16px 6px 16px;
+        padding: 13px 18px;
+        margin: 10px 0;
+        max-width: 70%;
+        float: right;
+        clear: both;
+        text-align: right;
+        box-shadow: 0 2px 12px 0 #00000020;
+        font-size: 1.08rem;
+
+    }
+    .stChatInputContainer, .chat-input {
+        background: #fff !important;
+        border-radius: 20px !important;
+        box-shadow: 0 2px 16px 0 #00000030;
+        padding: 10px 18px !important;
+        border: 1.5px solid #e6e6e6 !important;
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+        margin-bottom: 0;
+        width: 100% !important;
+        position: static !important;
+        left: unset !important;
+        bottom: unset !important;
+        transform: none !important;
+    }
+    .stChatInputContainer input, .chat-input input {
+        background: transparent;
+
+        color: #232323;
+        font-size: 1.1rem;
+        flex: 1;
+        outline: none;
+    }
+    .stChatInputContainer button, .chat-input button {
+        background: #232323;
+        color: #fff;
+
+        border-radius: 50%;
+        box-shadow: 0 0 8px 1px #00000033;
+        width: 40px;
+        height: 40px;
+        margin-left: 10px;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: box-shadow 0.2s, background 0.2s;
+    }
+    .stChatInputContainer button:hover, .chat-input button:hover {
+        box-shadow: 0 0 16px 4px #23232366;
+        background: #444;
+    }
+    .stButton > button {
+        background: #fff;
+        color: #232323;
+        border-radius: 14px;
+        box-shadow: 0 0 6px 1px #00000022;
+
+        font-weight: 600;
+        font-size: 1.04rem;
+        transition: box-shadow 0.2s, background 0.2s;
+    }
+    .stButton > button:hover {
+        box-shadow: 0 0 12px 3px #23232333;
+        background: #f2f2f2;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: #232323;
+        color: #fff;
+        border-radius: 10px 10px 0 0;
+        font-weight: 600;
+        font-size: 1.04rem;
+        margin-right: 4px;
+
+        box-shadow: 0 2px 8px 0 #00000010;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #fff;
+        color: #232323;
+    }
+    .scroll-bottom { height: 1px; }
+    ::selection { background: #23232322; }
+    </style>
+''', unsafe_allow_html=True)
+
+# === Space Earth Horizon, Moving Particles, Spotlight, and Fading Text ===
+st.markdown(
+    '''
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;900&family=Montserrat:wght@400;700&display=swap');
+    html, body, .stApp {
+        height: 100%;
+        margin: 0;
+        font-family: 'Poppins', 'Montserrat', 'Inter', sans-serif;
+        background: #101010;
+        overflow-x: hidden;
+    }
+    /* Main space background video */
+    #bgvid {
+        position: fixed;
+        top: 0; left: 0;
+        min-width: 100vw;
+        min-height: 100vh;
+        width: 100vw; height: 100vh;
+        object-fit: cover;
+        z-index: 0;
+        opacity: 0.18;
+        pointer-events: none;
+        filter: blur(0.5px) brightness(1.1) saturate(1.1);
+    }
+    /* Earth horizon video at bottom */
+    #earthvid {
+        position: fixed;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 100vw;
+        min-width: 100vw;
+        max-width: 100vw;
+        height: 28vh;
+        object-fit: cover;
+        z-index: 3;
+        opacity: 0.85;
+        pointer-events: none;
+        filter: blur(0.2px) brightness(1.2) saturate(1.25);
+    }
+    /* Spotlight/beam from above */
+    .space-spotlight {
+        position: fixed;
+        top: -15vw;
+        left: 50vw;
+        transform: translateX(-50%);
+        width: 120vw;
+        height: 60vw;
+        pointer-events: none;
+        z-index: 2;
+        background: radial-gradient(ellipse at 50% 0%, rgba(200,200,255,0.24) 0%, rgba(85,74,255,0.09) 54%, rgba(24,24,47,0.0) 100%);
+        filter: blur(20px) brightness(1.12);
+        animation: spotlight-fade 7s ease-in-out infinite alternate;
+    }
+    @keyframes spotlight-fade {
+        0% { opacity: 0.83; }
+        100% { opacity: 0.33; }
+    }
+    /* Massive faint watermark text */
+    .watermark {
+        position: fixed;
+        top: 12vh;
+        left: 50vw;
+        transform: translateX(-50%);
+        font-size: 13vw;
+        font-family: 'Inter', sans-serif;
+        color: #fff;
+        opacity: 0.035;
+        z-index: 4;
+        letter-spacing: 0.04em;
+        font-weight: 900;
+        user-select: none;
+        pointer-events: none;
+        text-shadow: 0 0 80px #fff, 0 2px 16px #fff;
+        white-space: nowrap;
+    }
+    /* Space particles with movement */
+    .space-particles {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        pointer-events: none;
+        z-index: 5;
+    }
+    .space-particles span {
+        position: absolute;
+        border-radius: 50%;
+        background: #fff;
+        opacity: 0.7;
+        animation: move-particle 14s linear infinite, twinkle 2.5s infinite alternate;
+    }
+    /* Unique movement for each particle */
+    .p1 { animation-delay: 0s, 0.2s; top:8%; left:15%; width:2.5px; height:2.5px; }
+    .p2 { animation-delay: 2s, 0.7s; top:20%; left:60%; width:1.7px; height:1.7px; }
+    .p3 { animation-delay: 3s, 1.1s; top:32%; left:80%; width:2.9px; height:2.9px; }
+    .p4 { animation-delay: 1s, 0.9s; top:55%; left:30%; width:1.2px; height:1.2px; }
+    .p5 { animation-delay: 6s, 0.4s; top:70%; left:10%; width:1.6px; height:1.6px; }
+    .p6 { animation-delay: 8s, 1.5s; top:80%; left:85%; width:2.7px; height:2.7px; }
+    .p7 { animation-delay: 7s, 0.6s; top:60%; left:50%; width:1.8px; height:1.8px; }
+    .p8 { animation-delay: 5s, 1.3s; top:15%; left:78%; width:1.3px; height:1.3px; }
+    .p9 { animation-delay: 4s, 0.8s; top:45%; left:65%; width:2.1px; height:2.1px; }
+    .p10 { animation-delay: 10s, 1.1s; top:88%; left:40%; width:1.5px; height:1.5px; }
+    .p11 { animation-delay: 12s, 1.6s; top:25%; left:35%; width:2.2px; height:2.2px; }
+    .p12 { animation-delay: 13s, 1.7s; top:60%; left:80%; width:1.8px; height:1.8px; }
+    .p13 { animation-delay: 11s, 1.2s; top:75%; left:55%; width:2.3px; height:2.3px; }
+    .p14 { animation-delay: 9s, 0.5s; top:40%; left:20%; width:2.1px; height:2.1px; }
+    .p15 { animation-delay: 7s, 1.8s; top:65%; left:70%; width:1.9px; height:1.9px; }
+    .p16 { animation-delay: 3.5s, 1.4s; top:10%; left:90%; width:2.4px; height:2.4px; }
+    .p17 { animation-delay: 2.5s, 0.3s; top:85%; left:20%; width:1.4px; height:1.4px; }
+    .p18 { animation-delay: 4.5s, 1.9s; top:35%; left:55%; width:2.6px; height:2.6px; }
+    .p19 { animation-delay: 6.5s, 1.1s; top:67%; left:33%; width:1.7px; height:1.7px; }
+    .p20 { animation-delay: 8.5s, 0.6s; top:22%; left:77%; width:2.0px; height:2.0px; }
+    @keyframes twinkle {
+        from { opacity: 0.18; }
+        to { opacity: 1; }
+    }
+    @keyframes move-particle {
+        0% { transform: translateY(0) scale(1); }
+        100% { transform: translateY(-30vh) scale(1.2); }
+    }
+    /* Glassmorphism for main container */
+    .stApp {
+        background: transparent !important;
+    }
+    .block-container {
+        background: rgba(24, 24, 32, 0.62);
+        border-radius: 20px;
+        box-shadow: 0 8px 48px 0 rgba(80,40,200,0.18);
+        padding: 2rem 2rem 2rem 2rem;
+        backdrop-filter: blur(24px) saturate(1.7);
+        border: 1.5px solid rgba(186,150,255,0.09);
+    }
+    /* Fading/gradient text effect for headings */
+    h1, h2, h3, h4, h5, h6 {
+        color: #fff;
+        background: linear-gradient(90deg, #fff 0%, #b68cff 60%, #fff 100%);
+        background-size: 200% auto;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: fadeText 4s ease-in-out infinite alternate;
+        font-weight: 900;
+        letter-spacing: 0.01em;
+        text-shadow: 0 2px 32px #a883ff33, 0 1px 2px #0008;
+    }
+    @keyframes fadeText {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+    }
+    .stButton>button {
+        background: linear-gradient(90deg,#b68cff,#5f5fff);
+        color: #fff;
+        font-weight: 600;
+        border-radius: 10px;
+
+        box-shadow: 0 2px 12px rgba(120,80,255,0.13);
+        transition: background 0.3s, box-shadow 0.3s;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(90deg,#5f5fff,#b68cff);
+        box-shadow: 0 4px 24px rgba(186,150,255,0.22);
+    }
+    .stTextInput>div>input,
+    .stTextArea>div>textarea {
+        background: rgba(255,255,255,0.13);
+        color: #fff;
+        border-radius: 8px;
+        border: 1px solid #b68cff;
+        font-size: 1rem;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(186,150,255,0.11);
+        border-radius: 10px 10px 0 0;
+        color: #fff;
+        font-weight: 600;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #5f5fff;
+        color: #fff;
+    }
+    </style>
+    <video autoplay loop muted id="bgvid">
+      <source src="https://assets.mixkit.co/videos/preview/mixkit-deep-space-stars-1600-large.mp4" type="video/mp4">
+    </video>
+    <video autoplay loop muted id="earthvid">
+      <source src="https://cdn.pixabay.com/video/2023/05/28/163129-827828085_large.mp4" type="video/mp4">
+    </video>
+    <div class="space-spotlight"></div>
+    <div class="watermark">AI Chat</div>
+    <div class="space-particles">
+      <span class="p1"></span><span class="p2"></span><span class="p3"></span><span class="p4"></span><span class="p5"></span>
+      <span class="p6"></span><span class="p7"></span><span class="p8"></span><span class="p9"></span><span class="p10"></span>
+      <span class="p11"></span><span class="p12"></span><span class="p13"></span><span class="p14"></span><span class="p15"></span>
+      <span class="p16"></span><span class="p17"></span><span class="p18"></span><span class="p19"></span><span class="p20"></span>
+    </div>
+    ''',
+    unsafe_allow_html=True
+)
 st.title("🤖 Ultimate AI Chatbot")
 
 # ------------------- Emotion Detection ------------------- #
@@ -283,7 +760,6 @@ chat_modes = {
 
 # -------------- Weather and News Functions --------------
 def get_weather(city="Hyderabad"):
-    WEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "6fa922409f28bebc0991def75a5accab")
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
     response = requests.get(url)
     if response.status_code == 200:
@@ -291,10 +767,12 @@ def get_weather(city="Hyderabad"):
         return {"city": city, "temp": data["main"]["temp"], "description": data["weather"][0]["description"].capitalize()}
     return None
 
-def get_news_from_rss():
+def get_news_from_rss(max_headlines=5):
     rss_url = "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en"
     feed = feedparser.parse(rss_url)
-    headlines = [f"• {entry.title}" for entry in feed.entries[:5]]
+    headlines = []
+    for entry in feed.entries[:max_headlines]:
+        headlines.append({"title": entry.title, "link": entry.link})
     return headlines
 
 # -------------- Code Sandbox Functions -----------      
@@ -379,6 +857,11 @@ if not st.session_state.is_online:
 
 
 # ========== ⭐ FUNCTION: Auto Persona Detection ==========
+
+# --- Initialize session state variables ---
+if "manual_persona_enabled" not in st.session_state:
+    st.session_state.manual_persona_enabled = False
+
 def detect_persona_from_input(user_input):
     input_lower = user_input.lower()
     if any(word in input_lower for word in ["code", "function", "bug", "python", "script", "error", "logic", "syntax"]):
@@ -550,31 +1033,6 @@ def web_search(query, num=5):
 
 # ========== ⭐ SIDEBAR SETTINGS (Updated) ==========
 with st.sidebar:
-    st.header("⚙️ Settings")
-    web_enabled = st.checkbox("🌐 Enable Web Search")
-    uploaded_file = st.file_uploader("📄 Upload PDF/DOCX", type=["pdf", "docx"])
-    use_voice = st.checkbox("🎤 Voice Input")  # ✅ kept as instructed
-
-    # 🔁 NEW: Auto vs Manual Persona Toggle
-    st.markdown("---")
-    st.header("🧠 Chat Persona (Auto Detection)")
-    st.session_state.manual_persona_enabled = st.checkbox("✅ Enable Manual Persona Selection")
-
-    if st.session_state.manual_persona_enabled:
-        selected_mode = st.selectbox("Select Chat Persona", list(chat_modes.keys()))
-        st.session_state.persona_prompt = chat_modes[selected_mode]
-        st.markdown(f"**Manual Persona Set:** {selected_mode}")
-    else:
-        st.markdown("🔍 Running in **Auto Persona Detection** mode")
-
-    # 🤖 Model Selection
-    st.header("🤖 Model Selection")
-    st.session_state.selected_model = st.selectbox(
-        "Choose LLM Model", list(model_sources.keys())
-    )
-
-    # 💾 Chat Management
-    st.markdown("---")
     st.header("💾 Chat Management")
     if st.button("🆕 New Chat"):
         st.session_state.history = []
@@ -599,6 +1057,39 @@ with st.sidebar:
             st.session_state.active_chat = new_fname
             st.success(f"✅ Renamed to: {new_fname}")
 
+    st.markdown("---")
+    if st.button("⚙️ Settings", key="sidebar_settings_btn"):
+        st.session_state.show_settings = True
+
+# ===== Settings Modal/Expandable =====
+if st.session_state.get("show_settings"):
+    with st.container():
+        st.markdown("""
+            <div style='position:fixed; top:5vh; left:50vw; transform:translateX(-50%); z-index:10000; background:rgba(34,34,54,0.97); border-radius:18px; box-shadow:0 4px 32px #b68cff44; padding:2.5rem 2.5rem 2rem 2.5rem; min-width:340px; max-width:90vw;'>
+        """, unsafe_allow_html=True)
+        st.markdown("### ⚙️ Settings")
+        if st.button("❌ Close Settings", key="close_settings_btn"):
+            st.session_state.show_settings = False
+            st.rerun()
+        st.markdown("---")
+        # Persona selection
+        st.markdown("#### 🧠 Chat Persona (Auto Detection)")
+        st.session_state.manual_persona_enabled = st.checkbox("Enable Manual Persona Selection", value=st.session_state.get("manual_persona_enabled", False), key="modal_manual_persona")
+        if st.session_state.manual_persona_enabled:
+            selected_mode = st.selectbox("Select Chat Persona", list(chat_modes.keys()), key="modal_select_persona")
+            st.session_state.persona_prompt = chat_modes[selected_mode]
+            st.markdown(f"**Manual Persona Set:** {selected_mode}")
+        else:
+            st.markdown("🔍 Running in **Auto Persona Detection** mode")
+        st.markdown("---")
+        # Model selection
+        st.markdown("#### 🤖 Model Selection")
+        st.session_state.selected_model = st.selectbox(
+            "Choose LLM Model", list(model_sources.keys()), key="modal_select_model"
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ===== Tabs =====
 tabs = st.tabs([
     "💬 Chat", "🎨 Image", "🪄 PPT/PDF", "📺 YouTube Summary", 
     "📄 Resume Review", "💻 Code Tools", "📅 Daily Utilities", 
@@ -609,22 +1100,48 @@ tabs = st.tabs([
 # ========== 🅰️ CHAT TAB: Persona-Aware ==========
 with tabs[0]:
     st.subheader("💬 Ask Anything")
-    user_input = None
+    # --- Plus Button and Feature Menu ---
+    col1, col2 = st.columns([10,1])
+    with col1:
+        pass  # Removed duplicate chat_input from col1
+    with col2:
+        if st.button("➕", key="plus_btn"):
+            st.session_state.show_plus_menu = not st.session_state.get("show_plus_menu", False)
+    user_input = st.chat_input("Type your message...", key="main_chat_input")
+    # --- Ensure variables are always defined, even if plus menu is closed ---
+    uploaded_file = None
+    add_text = ""
+    web_enabled = False
 
-    # 🎤 Handle voice input
-    if use_voice and st.button("🎙️ Speak"):
-        r = sr.Recognizer()
-        with sr.Microphone() as src:
-            st.info("🎤 Listening...")
-            audio = r.listen(src)
-        try:
-            # The following is a valid method in speech_recognition, linter false positive
-            user_input = r.recognize_google(audio)  # type: ignore[attr-defined]
-        except:
-            st.warning("Could not recognize your voice.")
-            user_input = ""
-    else:
-        user_input = st.chat_input("Type your message...")
+    if st.session_state.get("show_plus_menu", False):
+        with st.expander("More Features", expanded=True):
+            # Upload a file
+            uploaded_file = st.file_uploader("📄 Upload PDF/DOCX/TXT", type=["pdf", "docx", "txt"], key="plus_file")
+            # Add text content
+            add_text = st.text_area("📝 Add Text Content", key="plus_text")
+            # Enable web search
+            web_enabled = st.checkbox("🌐 Enable Web Search", key="plus_web")
+            # Voice input
+            # Voice input (check if PyAudio is installed)
+            try:
+                import pyaudio
+                pyaudio_available = True
+            except ImportError:
+                pyaudio_available = False
+            if pyaudio_available:
+                if st.button("🎤 Voice Input", key="plus_voice"):
+                    r = sr.Recognizer()
+                    with sr.Microphone() as src:
+                        st.info("🎤 Listening...")
+                        audio = r.listen(src)
+                    try:
+                        user_input = r.recognize_google(audio)  # type: ignore[attr-defined]
+                        st.session_state["main_chat_input"] = user_input
+                    except:
+                        st.warning("Could not recognize your voice.")
+                        user_input = ""
+            else:
+                st.info("PyAudio is not installed. Voice input is disabled. To use voice input, install PyAudio (pip install pyaudio).")
 
     # 💡 Handle message from user
     if user_input:
@@ -637,13 +1154,25 @@ with tabs[0]:
                 webctx = "\n".join(web_results)
 
             # Document upload context
+            docctx = ""
             if uploaded_file:
-                if uploaded_file.type.endswith("pdf"):
-                    reader = PyPDF2.PdfReader(uploaded_file)
-                    docctx = " ".join([p.extract_text() or "" for p in reader.pages])
-                elif uploaded_file.type.endswith("docx"):
-                    doc = docx.Document(uploaded_file)
-                    docctx = " ".join([p.text for p in doc.paragraphs])
+                try:
+                    if uploaded_file.type.endswith("pdf"):
+                        reader = PyPDF2.PdfReader(uploaded_file)
+                        docctx = " ".join([p.extract_text() or "" for p in reader.pages])
+                    elif uploaded_file.type.endswith("docx"):
+                        doc = docx.Document(uploaded_file)
+                        docctx = " ".join([p.text for p in doc.paragraphs])
+                    elif uploaded_file.type.endswith("txt"):
+                        uploaded_file.seek(0)
+                        docctx = uploaded_file.read().decode("utf-8", errors="ignore")
+                except Exception as e:
+                    st.warning(f"❌ Could not read uploaded file: {e}")
+                    docctx = ""
+                if docctx.strip():
+                    st.info(f"**File content preview:**\n{docctx[:500]}" + ("..." if len(docctx) > 500 else ""))
+                else:
+                    st.warning("⚠️ Uploaded file appears empty or could not be read. Please check your file.")
 
             # 🔍 Auto or Manual Persona Selection
             if not st.session_state.manual_persona_enabled:
@@ -671,26 +1200,119 @@ with tabs[0]:
                 st.session_state.active_chat = fname
                 st.session_state.new_chat_mode = False
 
-    # Display chat messages
+    # --- Custom CSS for left/right alignment ---
+    st.markdown("""
+    <style>
+    .stApp {
+        background: #181824 !important;
+        color: #fff !important;
+    }
+    .chat-container {
+        background: transparent !important;
+        max-height: 500px;
+        overflow-y: auto;
+        padding-bottom: 16px;
+    }
+    .msg-left {
+        background: #fff !important;
+        color: #232323 !important;
+        border-radius: 16px 16px 6px 16px;
+        padding: 13px 18px;
+        margin: 10px 0;
+        max-width: 70%;
+        float: left;
+        clear: both;
+        box-shadow: 0 2px 12px 0 #00000020;
+        font-size: 1.08rem;
+        border: none !important;
+    }
+    .msg-right {
+        background: #fff !important;
+        color: #232323 !important;
+        border-radius: 16px 16px 6px 16px;
+        padding: 13px 18px;
+        margin: 10px 0;
+        max-width: 70%;
+        float: right;
+        clear: both;
+        text-align: right;
+        box-shadow: 0 2px 12px 0 #00000020;
+        font-size: 1.08rem;
+        border: none !important;
+    }
+    .stChatInputContainer, .chat-input {
+        background: #fff !important;
+        border-radius: 20px !important;
+        box-shadow: 0 2px 16px 0 #00000044;
+        padding: 10px 18px !important;
+        margin-top: 10px;
+        margin-bottom: 0;
+        width: 100% !important;
+        border: none !important;
+        color: #232323 !important;
+    }
+    .stChatInputContainer input, .chat-input input {
+        background: transparent !important;
+        color: #232323 !important;
+        font-size: 1.1rem;
+        flex: 1;
+        outline: none;
+    }
+    .stChatInputContainer button, .chat-input button {
+        background: #232323 !important;
+        color: #fff !important;
+        border-radius: 50% !important;
+        box-shadow: 0 0 8px 1px #00000033 !important;
+        width: 40px !important;
+        height: 40px !important;
+        margin-left: 10px !important;
+        font-size: 1.3rem !important;
+        cursor: pointer;
+        border: none !important;
+        transition: box-shadow 0.2s, background 0.2s;
+    }
+    .stChatInputContainer button:hover, .chat-input button:hover {
+        box-shadow: 0 0 16px 4px #23232366 !important;
+        background: #444 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        background: #232323 !important;
+        border-radius: 20px !important;
+        box-shadow: 0 2px 12px 0 #00000020;
+        border: none !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #fff !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #fff !important;
+        color: #232323 !important;
+        border: none !important;
+    }
+    .scroll-bottom { height: 1px; }
+    ::selection { background: #23232322; }
+    </style>
+""", unsafe_allow_html=True)
+
+
+    # --- Chat Messages ---
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for q, a in st.session_state.history:
-        with st.chat_message("user"):
-            st.markdown(q)
-        with st.chat_message("assistant"):
-            st.markdown(a)
+        st.markdown(f'<div class="msg-right">{q}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="msg-left">{a}</div>', unsafe_allow_html=True)
+    st.markdown('<div id="scroll-bottom" class="scroll-bottom"></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- Auto-scroll to bottom using JS ---
+    st.markdown('''
+        <script>
+        var chatBottom = document.getElementById('scroll-bottom');
+        if (chatBottom) { chatBottom.scrollIntoView({behavior: "smooth"}); }
+        </script>
+    ''', unsafe_allow_html=True)
 
-#Image Generator Tab
-with tabs[1]:
-    st.subheader("🎨 Generate Images")
-    img_prompt = st.text_input("Enter prompt for image:")
-    if st.button("Generate Image") and img_prompt:
-        url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(img_prompt)}"  
-        try:
-            res = requests.get(url)
-            img = Image.open(BytesIO(res.content))
-            st.image(img, caption=img_prompt, use_column_width=True)
-        except:
-            st.error("❌ Failed to generate image.")
 
 # PPT / PDF Generator Tab
 with tabs[2]:
@@ -946,12 +1568,12 @@ with tabs[6]:
             st.info(f"🌦️ Cached Weather in **{cached_weather['city']}**: {cached_weather['temp']}°C, {cached_weather['description']}")
         else:
             st.warning("❌ No cached weather data available")
-    st.markdown("### 🗞️ Top Headlines")
+    st.markdown("### 🗞️ Top Headlines (Google News)")
     if st.session_state.is_online:
         headlines = get_news_from_rss()
         if headlines:
-            for h in headlines:
-                st.write(h)
+            for news in headlines:
+                st.markdown(f"**[{news['title']}]({news['link']})**")
             cache_data(headlines, "news", "headlines")
         else:
             st.error("❌ No headlines available")
@@ -959,8 +1581,11 @@ with tabs[6]:
         cached_headlines = get_offline_news()
         if cached_headlines:
             st.info("📰 Cached Headlines:")
-            for h in cached_headlines:
-                st.write(h)
+            for news in cached_headlines:
+                if isinstance(news, dict) and 'title' in news and 'link' in news:
+                    st.markdown(f"**[{news['title']}]({news['link']})**")
+                else:
+                    st.write(news)
         else:
             st.warning("❌ No cached news data available")
 
