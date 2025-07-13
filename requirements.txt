@@ -23,3 +23,6 @@ langdetect==1.0.9
 graphviz==0.21
 pyttsx3==2.98
 matplotlib==3.9.2
+python-dotenv==1.0.0
+toml==0.10.2
+pyaudio==0.2.14
