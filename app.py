@@ -49,65 +49,65 @@ import toml
 import google.generativeai as genai
 
 # Load secrets from secrets.toml
-secrets = toml.load("secrets.toml")
+st.secrets = toml.load("secrets.toml")
 
 # === API KEYS ===
-GEMINI_API_KEY = secrets["gemini"]["token"]
-OPENROUTER_API_KEY = secrets["openrouter"]["token"]
-GITHUB_API_TOKEN = secrets["github"]["token"]
-GROQ_API_KEY = secrets["groq"]["token"]
-A4F_API_KEY = secrets["a4f"]["token"]
-WEATHER_API_KEY = secrets["weather"]["token"]
-EMAIL_SENDER = secrets["email"]["sender"]
-EMAIL_PASSWORD = secrets["email"]["password"]
+GEMINI_API_KEY = st.secrets["gemini"]["token"]
+OPENROUTER_API_KEY = st.secrets["openrouter"]["token"]
+GITHUB_API_TOKEN = st.secrets["github"]["token"]
+GROQ_API_KEY = st.secrets["groq"]["token"]
+A4F_API_KEY = st.secrets["a4f"]["token"]
+WEATHER_API_KEY = st.secrets["weather"]["token"]
+EMAIL_SENDER = st.secrets["email"]["sender"]
+EMAIL_PASSWORD = st.secrets["email"]["password"]
 
 # === Model Configurations ===
 model_sources = {
     "Gemini-2.5-Flash": {
         "type": "gemini",
         "model": "gemini-2.5-flash",
-        "api_key": GEMINI_API_KEY
+        "api_key": st.secrets["gemini"]["token"]
     },
     "GitHub GPT-4.1": {
         "type": "github",
         "model": "openai/gpt-4.1",
         "base_url": "https://models.github.ai/inference",
-        "api_key": secrets["github"]["token"]
+        "api_key": st.secrets["github"]["token"]
     },
     "Groq Llama 4 Maverick": {
         "type": "groq",
         "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "api_key": secrets["groq"]["token"]
+        "api_key": st.secrets["groq"]["token"]
     },
     "OpenRouter DeepSeek Chat v3": {
         "type": "openrouter",
         "model": "deepseek/deepseek-chat-v3-0324:free",
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": secrets["openrouter"]["token"]
+        "api_key": st.secrets["openrouter"]["token"]
     },
     "OpenRouter DeepSeek R1": {
         "type": "openrouter",
         "model": "deepseek/deepseek-r1:free",
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": secrets["openrouter"]["token"]
+        "api_key": st.secrets["openrouter"]["token"]
     },
     "A4F Qwen3-235B": {
         "type": "a4f",
         "model": "provider-5/Qwen/Qwen3-235B-A22B",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": secrets["a4f"]["token"]
+        "api_key": st.secrets["a4f"]["token"]
     },
     "A4F Grok-4-0709": {
         "type": "a4f",
         "model": "provider-3/grok-4-0709",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": secrets["a4f"]["token"]
+        "api_key": st.secrets["a4f"]["token"]
     },
     "A4F Gemini-2.5-Flash": {
         "type": "a4f",
         "model": "provider-5/gemini-2.5-flash-preview-04-17",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": secrets["a4f"]["token"]
+        "api_key": st.secrets["a4f"]["token"]
     }
 }
 
