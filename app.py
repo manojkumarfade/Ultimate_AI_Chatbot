@@ -46,61 +46,68 @@ import graphviz
 import pytesseract
 from bs4 import Tag
 import toml
+import google.generativeai as genai
 
 # Load secrets from secrets.toml
-#secrets = toml.load("secrets.toml")
+secrets = toml.load("secrets.toml")
 
 # === API KEYS ===
-OPENROUTER_API_KEY = st.secrets["openrouter"]["token"]
-GITHUB_API_TOKEN   = st.secrets["github"]["token"]
-GROQ_API_KEY       = st.secrets["groq"]["token"]
-A4F_API_KEY        = st.secrets["a4f"]["token"]
-WEATHER_API_KEY    = st.secrets["weather"]["token"]
-EMAIL_SENDER       = st.secrets["email"]["sender"]
-EMAIL_PASSWORD     = st.secrets["email"]["password"]
-WEBSEARCH_API_KEY  = st.secrets["websearch"]["token"]
+GEMINI_API_KEY = secrets["gemini"]["token"]
+OPENROUTER_API_KEY = secrets["openrouter"]["token"]
+GITHUB_API_TOKEN = secrets["github"]["token"]
+GROQ_API_KEY = secrets["groq"]["token"]
+A4F_API_KEY = secrets["a4f"]["token"]
+WEATHER_API_KEY = secrets["weather"]["token"]
+EMAIL_SENDER = secrets["email"]["sender"]
+EMAIL_PASSWORD = secrets["email"]["password"]
+
 # === Model Configurations ===
 model_sources = {
+    "Gemini-2.5-Flash": {
+        "type": "gemini",
+        "model": "gemini-2.5-flash",
+        "api_key": GEMINI_API_KEY
+    },
     "GitHub GPT-4.1": {
         "type": "github",
         "model": "openai/gpt-4.1",
         "base_url": "https://models.github.ai/inference",
-        "api_key": st.secrets["github"]["token"]
+        "api_key": secrets["github"]["token"]
     },
     "Groq Llama 4 Maverick": {
         "type": "groq",
         "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "api_key": st.secrets["groq"]["token"]
+        "api_key": secrets["groq"]["token"]
     },
     "OpenRouter DeepSeek Chat v3": {
         "type": "openrouter",
         "model": "deepseek/deepseek-chat-v3-0324:free",
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": st.secrets["openrouter"]["token"]
+        "api_key": secrets["openrouter"]["token"]
     },
     "OpenRouter DeepSeek R1": {
         "type": "openrouter",
         "model": "deepseek/deepseek-r1:free",
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": st.secrets["openrouter"]["token"]
+        "api_key": secrets["openrouter"]["token"]
     },
     "A4F Qwen3-235B": {
         "type": "a4f",
         "model": "provider-5/Qwen/Qwen3-235B-A22B",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": st.secrets["a4f"]["token"]
+        "api_key": secrets["a4f"]["token"]
     },
     "A4F Grok-4-0709": {
         "type": "a4f",
         "model": "provider-3/grok-4-0709",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": st.secrets["a4f"]["token"]
+        "api_key": secrets["a4f"]["token"]
     },
     "A4F Gemini-2.5-Flash": {
         "type": "a4f",
         "model": "provider-5/gemini-2.5-flash-preview-04-17",
         "base_url": "https://api.a4f.co/v1",
-        "api_key": st.secrets["a4f"]["token"]
+        "api_key": secrets["a4f"]["token"]
     }
 }
 
@@ -108,9 +115,10 @@ model_sources = {
 def get_ai_response(messages, model_preference=None):
     """
     Try making API call to preferred model, fallback if fails, return response and model used.
+    Gemini is always first preference.
     """
-    model_try_order = []
-    if model_preference and model_preference in model_sources:
+    model_try_order = ["Gemini-2.5-Flash"]
+    if model_preference and model_preference in model_sources and model_preference not in model_try_order:
         model_try_order.append(model_preference)
     for m in model_sources:
         if m not in model_try_order:
@@ -121,6 +129,17 @@ def get_ai_response(messages, model_preference=None):
         if selected_model is None:
             continue
         try:
+            if selected_model["type"] == "gemini":
+                genai.configure(api_key=selected_model["api_key"])
+                model = genai.GenerativeModel(selected_model["model"])
+                user_content = "\n".join([msg["content"] for msg in messages if msg["role"] == "user"])
+                response = model.generate_content(user_content)
+                if hasattr(response, "text"):
+                    return response.text, model_name
+                elif hasattr(response, "candidates") and response.candidates:
+                    return response.candidates[0].content.parts[0].text, model_name
+                else:
+                    continue
             if selected_model["type"] == "openrouter":
                 headers = {
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -328,10 +347,18 @@ st.markdown('''
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Montserrat:wght@700&family=Poppins:wght@600&display=swap');
 html, body, [class*="css"] {
     font-family: 'Poppins', 'Montserrat', 'Inter', sans-serif !important;
-    background: #0e1021 !important;
-    color: #ececff;
+    background: linear-gradient(-45deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%) !important;
+    background-size: 400% 400% !important;
+    animation: gradientShift 15s ease infinite !important;
+    color: #ffffff;
     min-height: 100vh;
     overflow-x: hidden;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 /* Nebula background */
 body::before {
@@ -347,18 +374,20 @@ body::before {
     0% { transform: scale(1) rotate(0deg); }
     100% { transform: scale(1.2) rotate(8deg); }
 }
-/* Glassmorphism card */
+/* Modern glassmorphism card */
 .stContainer, .glass-card {
-    background: rgba(30,16,64,0.35) !important;
-    border: 2px solid #a259ff44 !important;
-    border-radius: 24px !important;
-    box-shadow: 0 8px 32px 0 #a259ff22, 0 2px 8px 0 #0002;
-    backdrop-filter: blur(8px) saturate(1.1);
-    transition: box-shadow 0.3s, border 0.3s;
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37) !important;
+    backdrop-filter: blur(20px) saturate(1.8) !important;
+    transition: all 0.3s ease !important;
 }
 .stContainer:hover, .glass-card:hover {
-    border: 2.5px solid #a259ffbb !important;
-    box-shadow: 0 12px 36px 0 #a259ff55, 0 2px 8px 0 #0003;
+    transform: translateY(-5px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5) !important;
+    background: rgba(255, 255, 255, 0.2) !important;
 }
 /* Gradient animated button */
 .gradient-btn, button[data-testid="baseButton"] {
@@ -1175,7 +1204,8 @@ tabs = st.tabs([
     "💬 Chat", "🎨 Image", "🪄 PPT/PDF", "📺 YouTube Summary", 
     "📄 Resume Review", "💻 Code Tools", "📅 Daily Utilities", 
     "🧪 Code Sandbox", "Offline Mode", "🎙️ Voice Features", 
-    "🛠️ AI Tools", "🎮 Game Center", "🩺 Health Assistant"
+    "🛠️ AI Tools", "🎮 Game Center", "🩺 Health Assistant",
+    "🧘 Mental Health", "📈 Productivity", "📱 Social Toolkit"
 ])
 
 # ================= ENHANCED FEATURES ===================
@@ -1250,15 +1280,55 @@ if show_history:
             tts.save("bot_voice.mp3")
             audio_file = open("bot_voice.mp3", "rb")
             st.audio(audio_file.read(), format="audio/mp3")
-        # Quick actions
+        # Quick Actions
         st.write("Quick Actions:")
-        if st.button("Summarize", key=f"summarize_{i}"): st.info("(Stub) Summary: " + a[:50] + "...")
-        if st.button("Translate", key=f"translate_{i}"): st.info("(Stub) Translation: " + a)
-        if st.button("Explain", key=f"explain_{i}"): st.info("(Stub) Explanation: " + a)
+        colqa1, colqa2, colqa3, colqa4, colqa5, colqa6 = st.columns(6)
+        with colqa1:
+            if st.button("Summarize", key=f"summarize_{i}"):
+                messages = [{"role": "user", "content": f"Summarize this: {a}"}]
+                summary, _ = get_ai_response(messages)
+                st.info("Summary: " + summary)
+        with colqa2:
+            if st.button("Rephrase", key=f"rephrase_{i}"):
+                messages = [{"role": "user", "content": f"Rephrase this: {a}"}]
+                rephrased, _ = get_ai_response(messages)
+                st.info("Rephrased: " + rephrased)
+        with colqa3:
+            if st.button("Translate", key=f"translate_{i}"):
+                messages = [{"role": "user", "content": f"Translate this to Hindi: {a}"}]
+                translated, _ = get_ai_response(messages)
+                st.info("Translation: " + translated)
+        with colqa4:
+            if st.button("Explain", key=f"explain_{i}"):
+                messages = [{"role": "user", "content": f"Explain this: {a}"}]
+                explained, _ = get_ai_response(messages)
+                st.info("Explanation: " + explained)
+        with colqa5:
+            if st.button("Copy", key=f"copy_{i}"):
+                st.code(a, language="text")
+                st.success("Copied to clipboard! (manual)")
+        with colqa6:
+            if st.button("🔊 Voice", key=f"tts_{i}"):
+                tts = gTTS(a)
+                tts.save(f"bot_voice_{i}.mp3")
+                audio_file = open(f"bot_voice_{i}.mp3", "rb")
+                st.audio(audio_file.read(), format="audio/mp3")
+
+        # Smart Suggestions
+        st.write(":bulb: **Smart Suggestions:**")
+        suggestions = [
+            f"Ask for more details about: {q[:30]}...",
+            "Request a summary",
+            "Translate to another language",
+            "Ask for a follow-up question"
+        ]
+        for s in suggestions:
+            if st.button(s, key=f"suggestion_{i}_{s[:10]}"):
+                st.session_state["main_chat_input"] = s
+                st.session_state["main_chat_input_prefill"] = True
         # Feedback
         st.write("Rate this response:")
         rating = st.slider("", 1, 5, 3, key=f"rating_{i}")
-        st.session_state[f"rating_{i}"] = rating
         st.write(f"Your rating: {rating}")
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('<div id="scroll-bottom" class="scroll-bottom"></div>', unsafe_allow_html=True)
@@ -1296,11 +1366,11 @@ with tabs[0]:
     if st.session_state.get("show_plus_menu", False):
         with st.expander("More Features", expanded=True):
             # Upload a file
-            uploaded_file = st.file_uploader("📄 Upload PDF/DOCX/TXT", type=["pdf", "docx", "txt"], key="plus_file")
+            uploaded_file = st.file_uploader("📄 Upload PDF/DOCX/TXT", type=["pdf", "docx", "txt"], key="plus_file_main")
             # Add text content
-            add_text = st.text_area("📝 Add Text Content", key="plus_text")
+            add_text = st.text_area("📝 Add Text Content", key="plus_text_main")
             # Enable web search
-            web_enabled = st.checkbox("🌐 Enable Web Search", key="plus_web")
+            web_enabled = st.checkbox("🌐 Enable Web Search", key="plus_web_main")
             # Voice input
             # Voice input (check if PyAudio is installed)
             try:
@@ -1742,7 +1812,7 @@ with tabs[6]:
     st.title("📅 Daily Utilities")
     today = datetime.now()
     st.markdown(f"### 📅 Today: `{today.strftime('%A, %d %B %Y')}`")
-    city = st.text_input("Enter city for weather", "Hyderabad")
+    city = st.text_input("Enter city for weather", "Hyderabad", key="weather_city_input")
     if st.session_state.is_online:
         weather = get_weather(city)
         if weather:
@@ -1797,7 +1867,7 @@ with tabs[7]:
     st.info("Run Python code safely with timeout protection and restricted imports.")
     col1, col2 = st.columns([3, 1])
     with col1:
-        code_input = st.text_area("Enter Python code:", height=300)
+        code_input = st.text_area("Enter Python code:", height=300, key="sandbox_code_input")
     with col2:
         st.markdown("**Available Modules:**")
         st.code("""
@@ -1813,7 +1883,7 @@ with tabs[7]:
 • string
 • textwrap
         """)
-        timeout_setting = st.slider("Timeout (seconds)", 1, 30, 10)
+        timeout_setting = st.slider("Timeout (seconds)", 1, 30, 10, key="sandbox_timeout_slider")
     if st.button("🚀 Run Code", type="primary") and code_input.strip():
         with st.spinner("Executing code..."):
             result = execute_python_code(code_input, timeout=timeout_setting)
@@ -1878,12 +1948,12 @@ with tabs[9]:
         st.success(f"🧠 Detected Emotion: **{emotion}**")
     st.markdown("---")
     st.header("🗨️ Type & Translate with Voice Reply")
-    text_input = st.text_input("Enter your message here...")
+    text_input = st.text_input("Enter your message here...", key="voice_text_input")
     lang_map = {
         "English": "en", "Hindi": "hi", "Telugu": "te", "Tamil": "ta",
         "Kannada": "kn", "Malayalam": "ml", "Gujarati": "gu", "Marathi": "mr"
     }
-    lang_selected = st.selectbox("Reply in language", list(lang_map.keys()))
+    lang_selected = st.selectbox("Reply in language", list(lang_map.keys()), key="voice_lang_select")
     if text_input and lang_selected:
         lang_code = lang_map[lang_selected]
         translated_text = translate_text(text_input, lang_code)
@@ -2029,8 +2099,8 @@ with tabs[10]:
     with st.container():
         st.markdown('<div class="glass-card" style="padding:16px;">', unsafe_allow_html=True)
         st.markdown("**Vocabulary Quiz** " + info_icon("Test your vocabulary with MCQ or fill-in-the-blank quizzes. Choose format and language."), unsafe_allow_html=True)
-        quiz_word = st.text_input("Word for Vocabulary Quiz", key="quiz_word")
-        quiz_format = st.radio("Quiz Format", ["Multiple Choice", "Fill in the Blank"], horizontal=True, key="quiz_format")
+        quiz_word = st.text_input("Word for Vocabulary Quiz", key="quiz_word_vocab")
+        quiz_format = st.radio("Quiz Format", ["Multiple Choice", "Fill in the Blank"], horizontal=True, key="quiz_format_vocab")
         if st.button("Get Quiz", key="btn_get_quiz"):
             if quiz_word.strip():
                 prompt = f"Give me a {quiz_format.lower()} vocabulary quiz for the word '{quiz_word}' in {lang_target}. Provide the answer and a short explanation."
@@ -2043,8 +2113,8 @@ with tabs[10]:
 
     # 5. AI-powered Social Media Post Generator
     st.subheader("📱 AI-powered Social Media Post Generator")
-    platform = st.selectbox("Platform", ["Twitter", "LinkedIn", "Instagram", "Facebook"])
-    post_topic = st.text_input("Post Topic or Idea")
+    platform = st.selectbox("Platform", ["Twitter", "LinkedIn", "Instagram", "Facebook"], key="social_platform_select")
+    post_topic = st.text_input("Post Topic or Idea", key="social_post_topic_input")
     if st.button("Generate Post"):
         if post_topic.strip():
             messages = [{"role": "user", "content": f"Write a viral {platform} post about: {post_topic}. Add hashtags and emojis."}]
@@ -2154,7 +2224,30 @@ Artist: {song['artist']}""")
 # 🎮 Ultimate Game Center Tab
 # =============================
 with tabs[11]:  # Adjust index if needed
-    st.title("🎮 Interactive Game Center")
+    st.title("🎮 Interactive Game Center & Fun Zone")
+
+    st.markdown("""
+    <div style='font-size:1.1rem;'>
+    🕹️ <b>Welcome to the Fun Zone!</b><br>
+    Play games, challenge your mind, and relax.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.subheader("Daily Brain Teaser")
+    teasers = [
+        "What comes once in a minute, twice in a moment, but never in a thousand years?",
+        "I speak without a mouth and hear without ears. What am I?",
+        "What has keys but can't open locks?"
+    ]
+    answers = ["m", "echo", "keyboard"]
+    t_idx = datetime.now().day % len(teasers)
+    st.markdown(f"**Teaser:** {teasers[t_idx]}")
+    user_teaser = st.text_input("Your answer:", key="teaser_brainteaser")
+    if user_teaser:
+        if user_teaser.lower().strip() == answers[t_idx]:
+            st.success("🎯 Correct!")
+        else:
+            st.warning("Not quite. Try again!")
 
     game = st.selectbox("Choose a game to play:", [
         "🧠 Riddle of the Day",
@@ -2198,7 +2291,7 @@ with tabs[11]:  # Adjust index if needed
         q = list(trivia_q.keys())[datetime.now().day % len(trivia_q)]
         correct, options = trivia_q[q]
         st.markdown(f"**🤔 Question:** {q}")
-        choice = st.radio("Choose an answer:", options)
+        choice = st.radio("Choose an answer:", options, key="trivia_quiz_radio")
         if st.button("Submit Answer"):
             if choice == correct:
                 st.success("🎉 That's correct!")
@@ -2211,7 +2304,7 @@ with tabs[11]:  # Adjust index if needed
         word = random.choice(words)
         scrambled = ''.join(random.sample(word, len(word)))
         st.markdown(f"**🔁 Unscramble this word:** `{scrambled}`")
-        user_guess = st.text_input("Your guess:")
+        user_guess = st.text_input("Your guess:", key="word_scramble_guess")
         if user_guess:
             if user_guess.lower().strip() == word:
                 st.success("🎯 Well done!")
@@ -2303,7 +2396,7 @@ with tabs[11]:  # Adjust index if needed
 
     # Game 8: Whack-a-Mole (Text)
     elif game == "🐹 Whack-a-Mole":
-        if st.button("Start Game"):
+        if st.button("Start Game", key="whackamole_start"):
             mole = random.randint(1, 9)
             st.session_state.mole = mole
         mole = st.session_state.get("mole", 0)
@@ -2326,7 +2419,7 @@ with tabs[11]:  # Adjust index if needed
         }
         emoji, country = random.choice(list(flags.items()))
         st.markdown(f"**🏁 Flag:** {emoji}")
-        guess = st.text_input("Which country is this?")
+        guess = st.text_input("Which country is this?", key="flag_guess_input")
         if guess:
             if guess.lower() == country.lower():
                 st.success("🎉 Correct!")
@@ -2359,49 +2452,340 @@ with tabs[11]:  # Adjust index if needed
 # 🩺 Health Assistant Tab
 # =============================
 with tabs[12]:
-    st.title("🩺 Health Bot - Symptom Checker")
+    # --- Health Assistant code already present here ---
+    ... # (leave as is)
 
-    symptoms = st.multiselect("Select symptoms you're experiencing:", [
-        "Fever", "Headache", "Cold", "Cough", "Sore throat", "Body pain", 
-        "Eye strain", "Stomach ache", "Nausea", "Fatigue"
-    ])
+# =============================
+# 🧘 Mental Health & Wellness Tab
+# =============================
+with tabs[13]:
+    st.title("🧘 Mental Health & Wellness")
+    st.markdown("""
+    <div style='font-size:1.1rem;'>
+    🌤️ <b>Welcome to your Mental Wellness Hub!</b><br>
+    Track your mood, journal your thoughts, meditate, and get daily motivation.
+    </div>
+    """, unsafe_allow_html=True)
 
-    if st.button("🧠 Get Remedies"):
-        if not symptoms:
-            st.warning("Please select at least one symptom.")
+    # Initialize session state for mood and journal
+    if "mood_history" not in st.session_state:
+        st.session_state.mood_history = []
+    if "journal_history" not in st.session_state:
+        st.session_state.journal_history = []
+
+    # Mood Tracker
+    st.subheader("Mood Tracker")
+    mood = st.selectbox("How are you feeling today?", ["😊 Happy", "😔 Sad", "😠 Angry", "😱 Stressed", "😴 Tired", "😍 Loved", "🤒 Unwell", "🤩 Excited", "😐 Neutral"], key="mood_select")
+    if st.button("Save Mood", key="save_mood_btn"):
+        moods = st.session_state.get("mood_history", [])
+        moods.append((str(datetime.now()), mood))
+        st.session_state.mood_history = moods
+        st.success(f"Mood saved: {mood}")
+    if st.session_state.get("mood_history"):
+        st.markdown("**Your Mood History:**")
+        for d, m in st.session_state.mood_history[-7:]:
+            st.write(f"{d[:16]}: {m}")
+
+    # Journaling
+    st.subheader("Daily Journal")
+    journal = st.text_area("Write your thoughts, worries, or gratitude here:", key="mental_journal_mh")
+    if st.button("Save Journal Entry", key="save_journal_btn_mh"):
+        journals = st.session_state.get("journal_history", [])
+        journals.append((str(datetime.now()), journal))
+        st.session_state.journal_history = journals
+        st.success("Journal saved!")
+    if st.session_state.get("journal_history"):
+        st.markdown("**Recent Journal Entries:**")
+        for d, j in st.session_state.journal_history[-5:]:
+            st.write(f"{d[:16]}: {j}")
+
+    # Meditation
+    st.subheader("Guided Meditation")
+    if st.button("Start 1-Minute Meditation", key="meditate_btn"):
+        st.info("Close your eyes. Breathe in... Breathe out... Let thoughts pass by. Focus on your breath for one minute.")
+    st.markdown("Or try this [1-min meditation video](https://www.youtube.com/watch?v=inpok4MKVLM)")
+
+    # Motivation
+    st.subheader("Daily Motivation")
+    if st.button("Get Motivational Quote", key="motivation_btn"):
+        quotes = [
+            "You are stronger than you think!",
+            "Every day is a fresh start.",
+            "Progress, not perfection.",
+            "Breathe. This too shall pass.",
+            "Your feelings are valid."
+        ]
+        st.info(random.choice(quotes))
+
+# =============================
+# 📈 Productivity Tools Tab
+# =============================
+with tabs[14]:
+    st.title("📈 Productivity Tools")
+    st.markdown("""
+    <div style='font-size:1.1rem;'>
+    🚀 <b>Boost your productivity!</b><br>
+    Manage tasks, set reminders, and get AI-powered study help.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Initialize session state for to-do and reminders
+    if "todo_list" not in st.session_state:
+        st.session_state.todo_list = []
+    if "reminder_list" not in st.session_state:
+        st.session_state.reminder_list = []
+
+    # To-Do List
+    st.subheader("To-Do List")
+    todo = st.text_input("Add a new task:", key="todo_input_prod")
+    if st.button("Add Task", key="add_task_btn_prod") and todo:
+        todos = st.session_state.get("todo_list", [])
+        todos.append((False, todo))
+        st.session_state.todo_list = todos
+        st.session_state["todo_input_prod"] = ""  # Clear input field
+    if st.session_state.get("todo_list"):
+        tasks = st.session_state.todo_list
+        for idx, (done, task) in enumerate(tasks):
+            col1, col2 = st.columns([1,8])
+            with col1:
+                checked = st.checkbox("", value=done, key=f"todo_{idx}")
+                tasks[idx] = (checked, task)
+            with col2:
+                st.write(task)
+        st.session_state.todo_list = tasks
+
+    # Reminders
+    st.subheader("Reminders")
+    reminder = st.text_input("Set a reminder (e.g. 'Drink water at 4pm'):", key="reminder_input_prod")
+    if st.button("Add Reminder", key="add_reminder_btn_prod") and reminder:
+        reminders = st.session_state.get("reminder_list", [])
+        reminders.append((str(datetime.now()), reminder))
+        st.session_state.reminder_list = reminders
+        st.success("Reminder added!")
+    if st.session_state.get("reminder_list"):
+        st.markdown("**Your Reminders:**")
+        for d, r in st.session_state.reminder_list[-5:]:
+            st.write(f"{d[:16]}: {r}")
+
+    # Study Assistant
+    st.subheader("AI Study Assistant")
+    study_q = st.text_input("Ask a study question (math, science, etc.):", key="study_q_prod")
+    if st.button("Get Study Help", key="study_help_btn_prod") and study_q:
+        messages = [{"role": "user", "content": f"Help me with this study question: {study_q}"}]
+        answer, _ = get_ai_response(messages)
+        st.info(answer)
+
+
+# =============================
+# 📱 Social Media Toolkit Tab
+# =============================
+with tabs[15]:
+    st.title("📱 Social Media Toolkit")
+    st.markdown("""
+    <div style='font-size:1.1rem;'>
+    📢 <b>Supercharge your social posts!</b><br>
+    Generate posts, find hashtags, and get emoji suggestions.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Post Generator
+    st.subheader("Post Generator")
+    post_topic = st.text_input("Describe your post topic or idea:", key="post_topic_social")
+    if st.button("Generate Post", key="generate_post_btn_social") and post_topic:
+        messages = [{"role": "user", "content": f"Write a catchy social media post about: {post_topic}"}]
+        post, _ = get_ai_response(messages)
+        st.info(post)
+
+    # Hashtag/Emoji Suggestions
+    st.subheader("Hashtag & Emoji Suggestions")
+    if st.button("Suggest Hashtags & Emojis", key="suggest_tags_btn_social") and post_topic:
+        messages = [{"role": "user", "content": f"Suggest 5 trending hashtags and 5 relevant emojis for this topic: {post_topic}"}]
+        tags, _ = get_ai_response(messages)
+        st.info(tags)
+
+    st.title("📈 Productivity Tools")
+    st.markdown("""
+    <div style='font-size:1.1rem;'>
+    🚀 <b>Boost your productivity!</b><br>
+    Manage tasks, set reminders, and get AI-powered study help.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # To-Do List
+    st.subheader("To-Do List")
+    todo = st.text_input("Add a new task:", key="todo_input")
+    if st.button("Add Task") and todo:
+        todos = st.session_state.get("todo_list", [])
+        todos.append((False, todo))
+        st.session_state.todo_list = todos
+        st.rerun()
+    if st.session_state.get("todo_list"):
+        tasks = st.session_state.todo_list
+        for idx, (done, task) in enumerate(tasks):
+            col1, col2 = st.columns([1,8])
+            with col1:
+                checked = st.checkbox("", value=done, key=f"todo_{idx}")
+                tasks[idx] = (checked, task)
+            with col2:
+                st.write(task)
+        st.session_state.todo_list = tasks
+
+    # Reminders
+    st.subheader("Reminders")
+    reminder = st.text_input("Set a reminder (e.g. 'Drink water at 4pm'):", key="reminder_input")
+    if st.button("Add Reminder") and reminder:
+        reminders = st.session_state.get("reminder_list", [])
+        reminders.append((str(datetime.now()), reminder))
+        st.session_state.reminder_list = reminders
+        st.success("Reminder added!")
+    if st.session_state.get("reminder_list"):
+        st.markdown("**Your Reminders:**")
+        for d, r in st.session_state.reminder_list[-5:]:
+            st.write(f"{d[:16]}: {r}")
+
+    # Study Assistant
+    st.subheader("AI Study Assistant")
+    study_q = st.text_input("Ask a study question (math, science, etc.):", key="study_q")
+    if st.button("Get Study Help") and study_q:
+        messages = [{"role": "user", "content": f"Help me with this study question: {study_q}"}]
+        answer, _ = get_ai_response(messages)
+        st.info(answer)
+
+    st.title("🧘 Mental Health & Wellness")
+    st.markdown("""
+    <div style='font-size:1.1rem;'>
+    🌤️ <b>Welcome to your Mental Wellness Hub!</b><br>
+    Track your mood, journal your thoughts, meditate, and get daily motivation.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Mood Tracker
+    st.subheader("Mood Tracker")
+    mood = st.selectbox("How are you feeling today?", ["😊 Happy", "😔 Sad", "😠 Angry", "😱 Stressed", "😴 Tired", "😍 Loved", "🤒 Unwell", "🤩 Excited", "😐 Neutral"])
+    if st.button("Save Mood"):
+        moods = st.session_state.get("mood_history", [])
+        moods.append((str(datetime.now()), mood))
+        st.session_state.mood_history = moods
+        st.success(f"Mood saved: {mood}")
+    if st.session_state.get("mood_history"):
+        st.markdown("**Your Mood History:**")
+        for d, m in st.session_state.mood_history[-7:]:
+            st.write(f"{d[:16]}: {m}")
+
+    # Journaling
+    st.subheader("Daily Journal")
+    journal = st.text_area("Write your thoughts, worries, or gratitude here:", key="mental_journal")
+    if st.button("Save Journal Entry"):
+        journals = st.session_state.get("journal_history", [])
+        journals.append((str(datetime.now()), journal))
+        st.session_state.journal_history = journals
+        st.success("Journal saved!")
+    if st.session_state.get("journal_history"):
+        st.markdown("**Recent Journal Entries:**")
+        for d, j in st.session_state.journal_history[-5:]:
+            st.write(f"{d[:16]}: {j}")
+
+    # Meditation
+    st.subheader("Guided Meditation")
+    if st.button("Start 1-Minute Meditation"):
+        st.info("Close your eyes. Breathe in... Breathe out... Let thoughts pass by. Focus on your breath for one minute.")
+    st.markdown("Or try this [1-min meditation video](https://www.youtube.com/watch?v=inpok4MKVLM)")
+
+    # Motivation
+    st.subheader("Daily Motivation")
+    if st.button("Get Motivational Quote"):
+        quotes = [
+            "You are stronger than you think!",
+            "Every day is a fresh start.",
+            "Progress, not perfection.",
+            "Breathe. This too shall pass.",
+            "Your feelings are valid."
+        ]
+        st.info(random.choice(quotes))
+
+    st.title("🩺 Health Assistant - Chat Mode")
+    st.markdown("""
+        <div style='font-size:1.1rem;'>
+        🤖 <b>Welcome to your AI Health Assistant!</b> <br>
+        Describe your symptoms or ask any health-related question. <br>
+        <i>"I have a headache and sore throat since yesterday."</i>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # --- Session state for health chat ---
+    if "health_chat_history" not in st.session_state:
+        st.session_state.health_chat_history = [
+            {"role": "assistant", "content": "Hello! I'm your AI Health Assistant. How can I help you today?"}
+        ]
+    if "health_quiz_mode" not in st.session_state:
+        st.session_state.health_quiz_mode = False
+    if "health_quiz_q" not in st.session_state:
+        st.session_state.health_quiz_q = None
+    if "health_quiz_a" not in st.session_state:
+        st.session_state.health_quiz_a = None
+
+    # --- Display chat history ---
+    for msg in st.session_state.health_chat_history:
+        align = "left" if msg["role"]=="assistant" else "right"
+        bubble_color = "#e8eafc" if msg["role"]=="assistant" else "#d1ffe8"
+        st.markdown(f"""
+        <div style='background:{bubble_color};padding:12px 18px;border-radius:14px;max-width:80%;margin-bottom:8px;float:{align};clear:both;'>
+        <b>{'🤖' if msg['role']=='assistant' else '🧑'}</b> {msg['content']}
+        </div>
+        <div style='clear:both;'></div>
+        """, unsafe_allow_html=True)
+
+    # --- User input ---
+    col1, col2, col3 = st.columns([7,1,1])
+    with col1:
+        user_health_input = st.text_input("Type your symptom/question...", key="health_input")
+    with col2:
+        if st.button("💡 Health Tip"):
+            tip = "Drink at least 2 liters of water daily and get 7-8 hours of sleep."
+            st.session_state.health_chat_history.append({"role":"assistant", "content":f"🌟 Health Tip: {tip}"})
+            st.rerun()
+    with col3:
+        if st.button("🚨 Emergency Info"):
+            emergency = "If you have chest pain, severe shortness of breath, or uncontrolled bleeding, call emergency services immediately."
+            st.session_state.health_chat_history.append({"role":"assistant", "content":f"🚑 {emergency}"})
+            st.rerun()
+
+    # --- Health Quiz Button ---
+    if st.button("📝 Take a Health Quiz"):
+        st.session_state.health_quiz_mode = True
+        st.session_state.health_quiz_q = "What is the normal human body temperature in Celsius?"
+        st.session_state.health_quiz_a = "36.5 to 37.5"
+        st.session_state.health_chat_history.append({"role":"assistant", "content":"📝 Quiz: What is the normal human body temperature in Celsius?"})
+        st.rerun()
+
+    # --- Quiz Mode ---
+    if st.session_state.health_quiz_mode and user_health_input:
+        answer = user_health_input.strip()
+        correct = st.session_state.health_quiz_a
+        if correct and (correct in answer or answer.replace("°C","") in correct):
+            st.session_state.health_chat_history.append({"role":"user", "content":answer})
+            st.session_state.health_chat_history.append({"role":"assistant", "content":"✅ Correct! The normal range is 36.5°C to 37.5°C."})
         else:
-            st.success("✅ Based on your symptoms, here are suggestions:")
+            st.session_state.health_chat_history.append({"role":"user", "content":answer})
+            st.session_state.health_chat_history.append({"role":"assistant", "content":f"❌ Not quite. The answer is: {correct}°C."})
+        st.session_state.health_quiz_mode = False
+        st.session_state.health_quiz_q = None
+        st.session_state.health_quiz_a = None
+        st.rerun()
 
-            remedies = []
-            tablets = []
-
-            if "Fever" in symptoms:
-                remedies.append("Drink tulsi + ginger tea 2 times daily.")
-                tablets.append("Paracetamol 500mg (if fever >100.5°F)")
-
-            if "Cold" in symptoms or "Sore throat" in symptoms:
-                remedies.append("Gargle warm salt water. Inhale steam with eucalyptus oil.")
-                tablets.append("Cetirizine (for sneezing or runny nose)")
-
-            if "Headache" in symptoms or "Eye strain" in symptoms:
-                remedies.append("Rest eyes. Apply cold pack. Drink water.")
-                tablets.append("Dolo 650 (mild pain relief)")
-
-            if "Stomach ache" in symptoms or "Nausea" in symptoms:
-                remedies.append("Jeera water. Avoid spicy food. Eat light khichdi.")
-                tablets.append("Domperidone (nausea), Meftal Spas (cramps)")
-
-            if "Fatigue" in symptoms or "Body pain" in symptoms:
-                remedies.append("Rest + hydrate. Banana or dates for quick energy.")
-                tablets.append("DOLO 650 or Ibuprofen")
-
-            st.markdown("### 🌿 Ayurvedic / Home Remedies")
-            for r in remedies:
-                st.markdown(f"- {r}")
-
-            st.markdown("### 💊 Optional Tablets")
-            for t in tablets:
-                st.markdown(f"- {t} *(Only if needed. Consult a doctor if unsure.)*")
+    # --- Main Health Chat Gemini Integration ---
+    if user_health_input and not st.session_state.health_quiz_mode:
+        st.session_state.health_chat_history.append({"role":"user", "content":user_health_input})
+        # Compose conversation history for Gemini
+        messages = []
+        for msg in st.session_state.health_chat_history[-8:]:
+            role = "user" if msg["role"]=="user" else "system"
+            messages.append({"role":role, "content":msg["content"]})
+        messages.insert(0, {"role":"system", "content":"You are a helpful, friendly, and professional health assistant. Ask clarifying questions if needed. If the user describes symptoms, suggest possible causes, home remedies, and when to see a doctor. Always add a disclaimer that this is not medical advice."})
+        response, model_used = get_ai_response(messages)
+        disclaimer = "\n\n*This is not medical advice. For emergencies or persistent symptoms, consult a doctor.*"
+        st.session_state.health_chat_history.append({"role":"assistant", "content":response+disclaimer})
+        st.rerun()
 
 
 # Export, Logout, Delete Account section
