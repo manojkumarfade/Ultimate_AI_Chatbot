@@ -49,7 +49,7 @@ import toml
 import google.generativeai as genai
 
 # Load secrets from secrets.toml
-st.secrets = toml.load("secrets.toml")
+#st.secrets = toml.load("secrets.toml")
 
 # === API KEYS ===
 GEMINI_API_KEY = st.secrets["gemini"]["token"]
