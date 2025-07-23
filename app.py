@@ -204,9 +204,20 @@ def get_ai_response(messages, model_preference=None):
                     continue
 
         except Exception as e:
+            error_msg = str(e).lower()
+            if "rate limit" in error_msg or "quota" in error_msg or "limit exceeded" in error_msg:
+                if model_preference == model_name:  # Only show rate limit message for the preferred model
+                    return f"[⚠️ {model_name} rate limit exceeded. Trying fallback models...]", model_name
+            elif "401" in error_msg or "unauthorized" in error_msg or "invalid" in error_msg:
+                if model_preference == model_name:
+                    return f"[🔑 {model_name} authentication failed. Check API key.]", model_name
+            elif "404" in error_msg or "not found" in error_msg:
+                if model_preference == model_name:
+                    return f"[❌ {model_name} model not found or unavailable.]", model_name
+            # Continue to next model for any error
             continue
 
-    return "[❌ All model APIs failed or rate-limited.]", "None"
+    return "[❌ All available models failed or are rate-limited. Please try again later.]", "None"
 
 # --------- DB Setup ---------
 conn = sqlite3.connect("chatbot_local.db", check_same_thread=False)
@@ -1204,140 +1215,13 @@ tabs = st.tabs([
     "💬 Chat", "🎨 Image", "🪄 PPT/PDF", "📺 YouTube Summary", 
     "📄 Resume Review", "💻 Code Tools", "📅 Daily Utilities", 
     "🧪 Code Sandbox", "Offline Mode", "🎙️ Voice Features", 
-    "🛠️ AI Tools", "🎮 Game Center", "🩺 Health Assistant",
-    "🧘 Mental Health", "📈 Productivity", "📱 Social Toolkit"
+    "🔠 AI Tools", "🎮 Game Center", "🩺 Health Assistant",
+    "🧘 Mental Health", "📈 Productivity"
 ])
 
-# ================= ENHANCED FEATURES ===================
-# --- Theme Toggle ---
-theme = st.session_state.get("theme", "auto")
-theme = st.selectbox("Theme", ["auto", "light", "dark"], index=["auto", "light", "dark"].index(theme), key="theme_toggle")
-st.session_state.theme = theme
-st.markdown(f"<style>body {{ background: {'#232323' if theme=='dark' else '#fff'}; }}</style>", unsafe_allow_html=True)
+# ================= ENHANCED FEATURES (moved to individual tabs) ===================
 
-# --- Collapsible Chat History ---
-show_history = st.session_state.get("show_history", True)
-if st.button("📜 Toggle Chat History", key="toggle_history_btn"):
-    st.session_state.show_history = not show_history
-show_history = st.session_state.get("show_history", True)
-
-# --- Profile/Settings Modal ---
-with st.expander("👤 Profile & Settings", expanded=False):
-    st.write(f"**User:** {st.session_state.get('email', 'Guest')}")
-    st.write("**Achievements:**", st.session_state.get("achievements", []))
-    st.write("**Theme:**", st.session_state.get("theme", "auto"))
-    st.write("**Chats:**", len(st.session_state.get("history", [])))
-    st.write("(More settings coming soon!)")
-
-# --- Daily AI Challenge/Quiz ---
-with st.expander("🎯 Daily AI Challenge", expanded=False):
-    quiz = st.session_state.get("daily_quiz", {
-        "q": "What is the capital of France?",
-        "a": "Paris"
-    })
-    if not isinstance(quiz, dict):
-        quiz = {
-            "q": "What is the capital of France?",
-            "a": "Paris"
-        }
-    st.write(f"**Today's Quiz:** {quiz['q']}")
-    user_ans = st.text_input("Your Answer", key="daily_quiz")
-    if user_ans and user_ans.lower().strip() == quiz["a"].lower():
-        st.success("Correct! 🏆")
-        st.session_state.achievements = st.session_state.get("achievements", []) + ["Daily Quiz Winner"]
-    elif user_ans:
-        st.warning("Try again!")
-
-# --- Chat Analytics Dashboard ---
-with st.expander("📊 Chat Analytics", expanded=False):
-    hist = st.session_state.get("history", [])
-    st.write(f"**Total Messages:** {len(hist)}")
-    st.write(f"**Unique Days Active:** {len(set([str(m[2])[:10] if len(m)>2 else 'today' for m in hist]))}")
-    st.write(f"**Achievements:** {st.session_state.get('achievements', [])}")
-    # (Extend with more analytics as needed)
-
-# --- Chat History with Avatars, Reactions, Voice, Quick Actions, Feedback ---
-if show_history:
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-    for i, (q, a, *rest) in enumerate(st.session_state.get("history", [])):
-        st.markdown(f'<div class="msg-right"><img src="https://api.dicebear.com/7.x/personas/svg?seed=user" width="32" style="vertical-align:middle;border-radius:50%;margin-right:8px;"> {q}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="msg-left"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=bot" width="32" style="vertical-align:middle;border-radius:50%;margin-right:8px;"> {a}', unsafe_allow_html=True)
-        # Emoji reactions (safe session_state handling)
-        like_key = f"like_{i}"
-        dislike_key = f"dislike_{i}"
-        if like_key not in st.session_state:
-            st.session_state[like_key] = 0
-        if dislike_key not in st.session_state:
-            st.session_state[dislike_key] = 0
-        if st.button("👍", key=like_key):
-            st.session_state[like_key] += 1
-        if st.button("👎", key=dislike_key):
-            st.session_state[dislike_key] += 1
-        st.write(f"Likes: {st.session_state.get(like_key, 0)} | Dislikes: {st.session_state.get(dislike_key, 0)}")
-        # Voice output
-        if st.button("🔊 Listen", key=f"tts_{i}"):
-            tts = gTTS(a)
-            tts.save("bot_voice.mp3")
-            audio_file = open("bot_voice.mp3", "rb")
-            st.audio(audio_file.read(), format="audio/mp3")
-        # Quick Actions
-        st.write("Quick Actions:")
-        colqa1, colqa2, colqa3, colqa4, colqa5, colqa6 = st.columns(6)
-        with colqa1:
-            if st.button("Summarize", key=f"summarize_{i}"):
-                messages = [{"role": "user", "content": f"Summarize this: {a}"}]
-                summary, _ = get_ai_response(messages)
-                st.info("Summary: " + summary)
-        with colqa2:
-            if st.button("Rephrase", key=f"rephrase_{i}"):
-                messages = [{"role": "user", "content": f"Rephrase this: {a}"}]
-                rephrased, _ = get_ai_response(messages)
-                st.info("Rephrased: " + rephrased)
-        with colqa3:
-            if st.button("Translate", key=f"translate_{i}"):
-                messages = [{"role": "user", "content": f"Translate this to Hindi: {a}"}]
-                translated, _ = get_ai_response(messages)
-                st.info("Translation: " + translated)
-        with colqa4:
-            if st.button("Explain", key=f"explain_{i}"):
-                messages = [{"role": "user", "content": f"Explain this: {a}"}]
-                explained, _ = get_ai_response(messages)
-                st.info("Explanation: " + explained)
-        with colqa5:
-            if st.button("Copy", key=f"copy_{i}"):
-                st.code(a, language="text")
-                st.success("Copied to clipboard! (manual)")
-        with colqa6:
-            if st.button("🔊 Voice", key=f"tts_{i}"):
-                tts = gTTS(a)
-                tts.save(f"bot_voice_{i}.mp3")
-                audio_file = open(f"bot_voice_{i}.mp3", "rb")
-                st.audio(audio_file.read(), format="audio/mp3")
-
-        # Smart Suggestions
-        st.write(":bulb: **Smart Suggestions:**")
-        suggestions = [
-            f"Ask for more details about: {q[:30]}...",
-            "Request a summary",
-            "Translate to another language",
-            "Ask for a follow-up question"
-        ]
-        for s in suggestions:
-            if st.button(s, key=f"suggestion_{i}_{s[:10]}"):
-                st.session_state["main_chat_input"] = s
-                st.session_state["main_chat_input_prefill"] = True
-        # Feedback
-        st.write("Rate this response:")
-        rating = st.slider("", 1, 5, 3, key=f"rating_{i}")
-        st.write(f"Your rating: {rating}")
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('<div id="scroll-bottom" class="scroll-bottom"></div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('''<script>var chatBottom = document.getElementById('scroll-bottom');if (chatBottom) { chatBottom.scrollIntoView({behavior: "smooth"}); }</script>''', unsafe_allow_html=True)
-
-# --- Bot Typing Indicator (stub, to be triggered on response fetch) ---
-if st.session_state.get("bot_typing", False):
-    st.info("🤖 Bot is typing...")
+# --- Chat History moved to Chat Tab ---
 
 # --- Accessibility Improvements ---
 st.markdown("<style>:focus {outline: 2px solid #a259ff !important;} .chat-container {font-size: 1.1rem;} .msg-right,.msg-left {padding: 8px 16px;margin: 8px 0;border-radius: 14px;max-width: 70%;display: inline-block;} .msg-right {background: #a259ff22;float: right;clear: both;} .msg-left {background: #23232322;float: left;clear: both;} </style>", unsafe_allow_html=True)
@@ -1350,6 +1234,156 @@ st.markdown("<style>:focus {outline: 2px solid #a259ff !important;} .chat-contai
 # ========== 🅰️ CHAT TAB: Persona-Aware ==========
 with tabs[0]:
     st.subheader("💬 Ask Anything")
+    
+    # --- Model Selection ---
+    col_model1, col_model2 = st.columns([3, 1])
+    with col_model1:
+        available_models = list(model_sources.keys())
+        if "selected_model" not in st.session_state:
+            st.session_state.selected_model = available_models[0]  # Default to first model
+        
+        selected_model = st.selectbox(
+            "🤖 Choose AI Model:",
+            available_models,
+            index=available_models.index(st.session_state.selected_model) if st.session_state.selected_model in available_models else 0,
+            key="model_selector"
+        )
+        st.session_state.selected_model = selected_model
+    
+    with col_model2:
+        if st.button("ℹ️ Model Info", key="model_info_btn"):
+            model_info = model_sources.get(selected_model, {})
+            st.info(f"**Model:** {model_info.get('model', 'N/A')}\n**Type:** {model_info.get('type', 'N/A')}")
+    
+    # --- Chat-specific Features ---
+    # Theme Toggle
+    theme = st.session_state.get("theme", "auto")
+    theme = st.selectbox("Theme", ["auto", "light", "dark"], index=["auto", "light", "dark"].index(theme), key="theme_toggle")
+    st.session_state.theme = theme
+    
+    # Collapsible Chat History Toggle
+    show_history = st.session_state.get("show_history", True)
+    if st.button("📜 Toggle Chat History", key="toggle_history_btn"):
+        st.session_state.show_history = not show_history
+    show_history = st.session_state.get("show_history", True)
+    
+    # Profile/Settings Modal
+    with st.expander("👤 Profile & Settings", expanded=False):
+        st.write(f"**User:** {st.session_state.get('email', 'Guest')}")
+        st.write("**Achievements:**", st.session_state.get("achievements", []))
+        st.write("**Theme:**", st.session_state.get("theme", "auto"))
+        st.write("**Chats:**", len(st.session_state.get("history", [])))
+        st.write("(More settings coming soon!)")
+    
+    # Daily AI Challenge/Quiz
+    with st.expander("🎯 Daily AI Challenge", expanded=False):
+        quiz = st.session_state.get("daily_quiz", {
+            "q": "What is the capital of France?",
+            "a": "Paris"
+        })
+        if not isinstance(quiz, dict):
+            quiz = {
+                "q": "What is the capital of France?",
+                "a": "Paris"
+            }
+        st.write(f"**Today's Quiz:** {quiz['q']}")
+        user_ans = st.text_input("Your Answer", key="daily_quiz")
+        if user_ans and user_ans.lower().strip() == quiz["a"].lower():
+            st.success("Correct! 🏆")
+            st.session_state.achievements = st.session_state.get("achievements", []) + ["Daily Quiz Winner"]
+        elif user_ans:
+            st.warning("Try again!")
+    
+    # Chat Analytics Dashboard
+    with st.expander("📊 Chat Analytics", expanded=False):
+        hist = st.session_state.get("history", [])
+        st.write(f"**Total Messages:** {len(hist)}")
+        st.write(f"**Unique Days Active:** {len(set([str(m[2])[:10] if len(m)>2 else 'today' for m in hist]))}")
+        st.write(f"**Achievements:** {st.session_state.get('achievements', [])}")
+    
+    # Chat History with Avatars, Reactions, Voice, Quick Actions, Feedback
+    if show_history:
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        for i, (q, a, *rest) in enumerate(st.session_state.get("history", [])):
+            st.markdown(f'<div class="msg-right"><img src="https://api.dicebear.com/7.x/personas/svg?seed=user" width="32" style="vertical-align:middle;border-radius:50%;margin-right:8px;"> {q}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="msg-left"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=bot" width="32" style="vertical-align:middle;border-radius:50%;margin-right:8px;"> {a}', unsafe_allow_html=True)
+            # Emoji reactions
+            like_key = f"like_{i}"
+            dislike_key = f"dislike_{i}"
+            if like_key not in st.session_state:
+                st.session_state[like_key] = 0
+            if dislike_key not in st.session_state:
+                st.session_state[dislike_key] = 0
+            if st.button("👍", key=like_key):
+                st.session_state[like_key] += 1
+            if st.button("👎", key=dislike_key):
+                st.session_state[dislike_key] += 1
+            st.write(f"Likes: {st.session_state.get(like_key, 0)} | Dislikes: {st.session_state.get(dislike_key, 0)}")
+            # Voice output
+            if st.button("🔊 Listen", key=f"tts_{i}"):
+                tts = gTTS(a)
+                tts.save("bot_voice.mp3")
+                audio_file = open("bot_voice.mp3", "rb")
+                st.audio(audio_file.read(), format="audio/mp3")
+            # Quick Actions
+            st.write("Quick Actions:")
+            colqa1, colqa2, colqa3, colqa4, colqa5, colqa6 = st.columns(6)
+            with colqa1:
+                if st.button("Summarize", key=f"summarize_{i}"):
+                    messages = [{"role": "user", "content": f"Summarize this: {a}"}]
+                    summary, _ = get_ai_response(messages)
+                    st.info("Summary: " + summary)
+            with colqa2:
+                if st.button("Rephrase", key=f"rephrase_{i}"):
+                    messages = [{"role": "user", "content": f"Rephrase this: {a}"}]
+                    rephrased, _ = get_ai_response(messages)
+                    st.info("Rephrased: " + rephrased)
+            with colqa3:
+                if st.button("Translate", key=f"translate_{i}"):
+                    messages = [{"role": "user", "content": f"Translate this to Hindi: {a}"}]
+                    translated, _ = get_ai_response(messages)
+                    st.info("Translation: " + translated)
+            with colqa4:
+                if st.button("Explain", key=f"explain_{i}"):
+                    messages = [{"role": "user", "content": f"Explain this: {a}"}]
+                    explained, _ = get_ai_response(messages)
+                    st.info("Explanation: " + explained)
+            with colqa5:
+                if st.button("Copy", key=f"copy_{i}"):
+                    st.code(a, language="text")
+                    st.success("Copied to clipboard! (manual)")
+            with colqa6:
+                if st.button("🔊 Voice", key=f"voice_qa_{i}"):
+                    tts = gTTS(a)
+                    tts.save(f"bot_voice_{i}.mp3")
+                    audio_file = open(f"bot_voice_{i}.mp3", "rb")
+                    st.audio(audio_file.read(), format="audio/mp3")
+            
+            # Smart Suggestions
+            st.write(":bulb: **Smart Suggestions:**")
+            suggestions = [
+                f"Ask for more details about: {q[:30]}...",
+                "Request a summary",
+                "Translate to another language",
+                "Ask for a follow-up question"
+            ]
+            for s in suggestions:
+                if st.button(s, key=f"suggestion_{i}_{s[:10]}"):
+                    st.session_state["main_chat_input"] = s
+                    st.session_state["main_chat_input_prefill"] = True
+            # Feedback
+            st.write("Rate this response:")
+            rating = st.slider("", 1, 5, 3, key=f"rating_{i}")
+            st.write(f"Your rating: {rating}")
+            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div id="scroll-bottom" class="scroll-bottom"></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('''<script>var chatBottom = document.getElementById('scroll-bottom');if (chatBottom) { chatBottom.scrollIntoView({behavior: "smooth"}); }</script>''', unsafe_allow_html=True)
+    
+    # Bot Typing Indicator
+    if st.session_state.get("bot_typing", False):
+        st.info("🤖 Bot is typing...")
+    
     # --- Plus Button and Feature Menu ---
     col1, col2 = st.columns([10,1])
     with col1:
@@ -1437,6 +1471,15 @@ with tabs[0]:
             ]
 
             response_text, model_used = get_ai_response(messages, model_preference=st.session_state.selected_model)
+            
+            # Show model status
+            if model_used == st.session_state.selected_model:
+                st.success(f"✅ Using your preferred model: **{model_used}**")
+            elif model_used != "None":
+                st.warning(f"⚠️ Fallback to: **{model_used}** (Your preferred model: {st.session_state.selected_model} was unavailable)")
+            else:
+                st.error(f"❌ All models failed including your preferred: **{st.session_state.selected_model}**")
+            
             tagged_res = f"**🤖 Response from {model_used}:**\n{response_text}"
 
             # Save and Display
@@ -1562,6 +1605,103 @@ with tabs[0]:
         if (chatBottom) { chatBottom.scrollIntoView({behavior: "smooth"}); }
         </script>
     ''', unsafe_allow_html=True)
+
+
+# ========== 🎨 IMAGE GENERATION TAB ==========
+with tabs[1]:
+    st.subheader("🎨 AI Image Generation")
+    
+    # Initialize session state for image prompt if not exists
+    if "image_prompt_text" not in st.session_state:
+        st.session_state.image_prompt_text = ""
+    
+    # Image prompt input
+    image_prompt = st.text_area(
+        "Describe the image you want to generate:",
+        value=st.session_state.image_prompt_text,
+        placeholder="A beautiful sunset over mountains with a lake in the foreground, digital art style",
+        height=100,
+        key="image_prompt_input"
+    )
+    
+    # Update session state with current input
+    st.session_state.image_prompt_text = image_prompt
+    
+    # Image style options
+    col1, col2 = st.columns(2)
+    with col1:
+        style = st.selectbox(
+            "Art Style:",
+            ["Digital Art", "Photorealistic", "Oil Painting", "Watercolor", "Cartoon", "Anime", "Sketch", "Abstract"],
+            key="image_style_select"
+        )
+    
+    with col2:
+        size = st.selectbox(
+            "Image Size:",
+            ["512x512", "768x768", "1024x1024"],
+            index=1,
+            key="image_size_select"
+        )
+    
+    # Generate button
+    if st.button("🎨 Generate Image", type="primary", key="generate_image_btn"):
+        if image_prompt.strip():
+            with st.spinner("🎨 Creating your image..."):
+                try:
+                    # Enhance prompt with style
+                    enhanced_prompt = f"{image_prompt}, {style.lower()} style, high quality, detailed"
+                    
+                    # Use Pollinations AI for free image generation
+                    import urllib.parse
+                    encoded_prompt = urllib.parse.quote(enhanced_prompt)
+                    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={size.split('x')[0]}&height={size.split('x')[1]}&seed={random.randint(1, 10000)}"
+                    
+                    # Display the generated image
+                    st.image(image_url, caption=f"Generated: {image_prompt[:50]}...", use_column_width=True)
+                    
+                    # Download link
+                    st.markdown(f"[📥 Download Image]({image_url})")
+                    
+                    # Show prompt used
+                    with st.expander("🔍 View Enhanced Prompt"):
+                        st.code(enhanced_prompt)
+                    
+                    st.success("✅ Image generated successfully!")
+                    
+                except Exception as e:
+                    st.error(f"❌ Error generating image: {str(e)}")
+                    st.info("💡 Try simplifying your prompt or try again later.")
+        else:
+            st.warning("⚠️ Please enter a description for your image.")
+    
+    # Example prompts
+    st.markdown("### 💡 Example Prompts")
+    example_prompts = [
+        "A majestic dragon flying over a medieval castle",
+        "Cyberpunk cityscape at night with neon lights",
+        "Peaceful zen garden with cherry blossoms",
+        "Futuristic space station orbiting Earth",
+        "Cozy coffee shop interior on a rainy day"
+    ]
+    
+    for i, prompt in enumerate(example_prompts):
+        if st.button(f"📝 {prompt}", key=f"example_prompt_{i}"):
+            st.session_state.image_prompt_text = prompt
+            st.rerun()
+    
+    # Tips section
+    with st.expander("💡 Image Generation Tips"):
+        st.markdown("""
+        **For better results:**
+        - Be specific about details (colors, lighting, mood)
+        - Mention the art style you prefer
+        - Include composition details (close-up, wide shot, etc.)
+        - Add quality keywords like "high quality", "detailed", "4K"
+        
+        **Example of a good prompt:**
+        "A serene mountain lake at sunset, with snow-capped peaks reflected in the water, warm golden lighting, photorealistic style, high detail"
+        """)
 
 
 # PPT / PDF Generator Tab
@@ -2577,32 +2717,9 @@ with tabs[14]:
 
 
 # =============================
-# 📱 Social Media Toolkit Tab
+# 📈 Productivity Tab
 # =============================
-with tabs[15]:
-    st.title("📱 Social Media Toolkit")
-    st.markdown("""
-    <div style='font-size:1.1rem;'>
-    📢 <b>Supercharge your social posts!</b><br>
-    Generate posts, find hashtags, and get emoji suggestions.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Post Generator
-    st.subheader("Post Generator")
-    post_topic = st.text_input("Describe your post topic or idea:", key="post_topic_social")
-    if st.button("Generate Post", key="generate_post_btn_social") and post_topic:
-        messages = [{"role": "user", "content": f"Write a catchy social media post about: {post_topic}"}]
-        post, _ = get_ai_response(messages)
-        st.info(post)
-
-    # Hashtag/Emoji Suggestions
-    st.subheader("Hashtag & Emoji Suggestions")
-    if st.button("Suggest Hashtags & Emojis", key="suggest_tags_btn_social") and post_topic:
-        messages = [{"role": "user", "content": f"Suggest 5 trending hashtags and 5 relevant emojis for this topic: {post_topic}"}]
-        tags, _ = get_ai_response(messages)
-        st.info(tags)
-
+with tabs[14]:
     st.title("📈 Productivity Tools")
     st.markdown("""
     <div style='font-size:1.1rem;'>
@@ -2651,6 +2768,11 @@ with tabs[15]:
         answer, _ = get_ai_response(messages)
         st.info(answer)
 
+
+# =============================
+# 🧘 Mental Health Tab
+# =============================
+with tabs[13]:
     st.title("🧘 Mental Health & Wellness")
     st.markdown("""
     <div style='font-size:1.1rem;'>
@@ -2703,6 +2825,11 @@ with tabs[15]:
         ]
         st.info(random.choice(quotes))
 
+
+# =============================
+# 🩺 Health Assistant Tab
+# =============================
+with tabs[12]:
     st.title("🩺 Health Assistant - Chat Mode")
     st.markdown("""
         <div style='font-size:1.1rem;'>
@@ -2736,16 +2863,18 @@ with tabs[15]:
         """, unsafe_allow_html=True)
 
     # --- User input ---
-    col1, col2, col3 = st.columns([7,1,1])
+    col1, col2, col3, col4 = st.columns([5,1,1,1])
     with col1:
         user_health_input = st.text_input("Type your symptom/question...", key="health_input")
     with col2:
-        if st.button("💡 Health Tip"):
+        send_health_message = st.button("📤 Send", key="send_health_btn")
+    with col3:
+        if st.button("💡 Health Tip", key="health_tip_btn"):
             tip = "Drink at least 2 liters of water daily and get 7-8 hours of sleep."
             st.session_state.health_chat_history.append({"role":"assistant", "content":f"🌟 Health Tip: {tip}"})
             st.rerun()
-    with col3:
-        if st.button("🚨 Emergency Info"):
+    with col4:
+        if st.button("🚨 Emergency Info", key="emergency_info_btn"):
             emergency = "If you have chest pain, severe shortness of breath, or uncontrolled bleeding, call emergency services immediately."
             st.session_state.health_chat_history.append({"role":"assistant", "content":f"🚑 {emergency}"})
             st.rerun()
@@ -2774,7 +2903,7 @@ with tabs[15]:
         st.rerun()
 
     # --- Main Health Chat Gemini Integration ---
-    if user_health_input and not st.session_state.health_quiz_mode:
+    if send_health_message and user_health_input.strip() and not st.session_state.health_quiz_mode:
         st.session_state.health_chat_history.append({"role":"user", "content":user_health_input})
         # Compose conversation history for Gemini
         messages = []
@@ -2782,7 +2911,10 @@ with tabs[15]:
             role = "user" if msg["role"]=="user" else "system"
             messages.append({"role":role, "content":msg["content"]})
         messages.insert(0, {"role":"system", "content":"You are a helpful, friendly, and professional health assistant. Ask clarifying questions if needed. If the user describes symptoms, suggest possible causes, home remedies, and when to see a doctor. Always add a disclaimer that this is not medical advice."})
-        response, model_used = get_ai_response(messages)
+        
+        with st.spinner("🤖 Health Assistant is thinking..."):
+            response, model_used = get_ai_response(messages)
+        
         disclaimer = "\n\n*This is not medical advice. For emergencies or persistent symptoms, consult a doctor.*"
         st.session_state.health_chat_history.append({"role":"assistant", "content":response+disclaimer})
         st.rerun()
