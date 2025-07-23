@@ -44,6 +44,13 @@ Chat Modes: Custom personas (Friendly Tutor, Strict Coder, Motivational Coach, e
 
 ---
 
+VIDEO FILE:
+
+https://github.com/user-attachments/assets/e9257d15-a075-491b-9dd7-7a481ad9484c
+
+
+
+
 <img width="1919" height="862" alt="Screenshot 2025-07-23 163858" src="https://github.com/user-attachments/assets/b5b88aad-624b-4f87-9cd7-4ab5aac4e6b3" />
 
 <img width="1909" height="871" alt="Screenshot 2025-07-23 163919" src="https://github.com/user-attachments/assets/bd008bc6-89ec-4f35-8baa-8f8e8cdf1372" />
