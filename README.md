@@ -44,11 +44,22 @@ Chat Modes: Custom personas (Friendly Tutor, Strict Coder, Motivational Coach, e
 
 ---
 
+WEBSITE(front-end):  https://astonishing-donut-5b27ee.netlify.app/
+
+<img width="1919" height="858" alt="Screenshot 2025-07-23 173029" src="https://github.com/user-attachments/assets/923ff093-0132-4588-af21-d60454d99cd5" />
+
+<img width="1919" height="865" alt="Screenshot 2025-07-23 173051" src="https://github.com/user-attachments/assets/c6e0d840-12ce-45ee-821e-e39a49803ddd" />
+
+<img width="1919" height="855" alt="Screenshot 2025-07-23 173100" src="https://github.com/user-attachments/assets/b4a97542-fdd6-455c-b52f-2c36b2d02ada" />
+
+<img width="1919" height="848" alt="Screenshot 2025-07-23 173142" src="https://github.com/user-attachments/assets/d8191bde-e42e-469b-b7ad-b9a464fb5e6b" />
+
+
+MAIN CHATBOT(back-end): https://ultimateaichatbot.streamlit.app/
+
 VIDEO FILE:
 
 https://github.com/user-attachments/assets/e9257d15-a075-491b-9dd7-7a481ad9484c
-
-
 
 
 <img width="1919" height="862" alt="Screenshot 2025-07-23 163858" src="https://github.com/user-attachments/assets/b5b88aad-624b-4f87-9cd7-4ab5aac4e6b3" />
