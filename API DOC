@@ -1,0 +1,234 @@
+API Documentation for AI Chatbot
+Overview
+The AI Chatbot is a Streamlit-based web application that provides a versatile, multi-functional chatbot with features like user authentication, chat history management, AI model integration (Gemini, Groq, OpenRouter, etc.), file processing, and various utilities (weather, news, code sandbox, etc.). This API documentation outlines the key backend functionalities and how to interact with them programmatically.
+Base URL
+The API is implemented within the Streamlit application and does not expose a traditional REST API. Instead, it uses internal Python functions and SQLite for data management. For external integration, you can extend the application by exposing endpoints using a framework like FastAPI. The current implementation assumes local execution or deployment on a server with Streamlit.
+Authentication
+The HogwartsAuthentication is handled via SQLite database (users table) with email, hashed password, verification status, and OTP codes.
+Sign-Up
+
+Function: validate_email(email), is_strong_password(password), hash_password(password), send_verification_email(to_email, code)
+Description: Creates a new user account.
+Parameters:
+email (string): Must be a valid email address.
+password (string): Must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.
+
+
+Process:
+Validate email format.
+Check password strength.
+Hash password using SHA-256.
+Generate a 6-digit OTP and send it via email.
+Store user data in the users table with is_verified=0.
+
+
+Response: Success or error message (e.g., "Invalid email format", "Email already exists").
+
+Login
+
+Function: Internal SQLite query
+Description: Authenticates a user.
+Parameters:
+email (string): Registered email.
+password (string): Password matching the hashed password in the database.
+
+
+Process:
+Query users table for email and hashed password.
+Verify password and is_verified status.
+
+
+Response: Success or error message (e.g., "No such user", "Verify your email").
+
+OTP Verification
+
+Function: Internal SQLite query
+Description: Verifies the OTP for email verification or password reset.
+Parameters:
+otp (string): 6-digit OTP sent to the user's email.
+email (string): Registered email.
+
+
+Process:
+Query users table for verification code.
+Compare provided OTP with stored code.
+Update is_verified or reset password on match.
+
+
+Response: Success or error message (e.g., "Invalid OTP").
+
+Password Reset
+
+Function: Internal SQLite query, send_verification_email(to_email, code), hash_password(password)
+Description: Resets a user's password.
+Parameters:
+email (string): Registered email.
+otp (string): 6-digit OTP.
+new_password (string): New password meeting strength requirements.
+
+
+Process:
+Send OTP to email.
+Verify OTP.
+Hash and update new password in users table.
+
+
+Response: Success or error message (e.g., "Password reset successful").
+
+Chat Management
+Chat data is stored in the chat_history SQLite table.
+Save Chat
+
+Function: save_chat_to_db(user_input, response)
+Description: Saves a user-bot conversation to the database.
+Parameters:
+user_input (string): User's message.
+response (string): Bot's response.
+email (string): User's email (from session state).
+
+
+Process:
+Generate unique chat_id using UUID.
+Store email, user_input, response, and timestamp in chat_history.
+
+
+Response: None (silent operation).
+
+Load Chat History
+
+Function: Internal SQLite query
+Description: Retrieves chat history for a user.
+Parameters:
+email (string): User's email.
+
+
+Process:
+Query chat_history table for messages associated with the email.
+Return list of tuples (user message, bot response, timestamp).
+
+
+Response: List of conversation tuples.
+
+AI Model Integration
+The chatbot integrates multiple AI models (Gemini, Groq, OpenRouter, GitHub, A4F) via the get_ai_response function.
+Get AI Response
+
+Function: get_ai_response(messages, model_preference=None)
+Description: Sends a request to an AI model and returns the response.
+Parameters:
+messages (list): List of message dictionaries with role ("user" or "system") and content.
+model_preference (string, optional): Preferred model (e.g., "Gemini-2.5-Flash").
+
+
+Process:
+Try models in order (Gemini first, then others).
+Send request based on model type (e.g., Gemini, OpenRouter, Groq).
+Return response text and model used.
+
+
+Response: Tuple (response_text, model_used) or error message if all models fail.
+
+Utilities
+Weather
+
+Function: get_weather(city="Hyderabad")
+Description: Fetches weather data for a city.
+Parameters:
+city (string): City name (default: Hyderabad).
+
+
+Process:
+Send GET request to OpenWeatherMap API.
+Cache response in JSON file.
+
+
+Response: Dictionary with city, temp, and description, or None if failed.
+
+News
+
+Function: get_news_from_rss(max_headlines=5)
+Description: Fetches top news headlines from Google News RSS.
+Parameters:
+max_headlines (int): Number of headlines to return (default: 5).
+
+
+Process:
+Parse RSS feed using feedparser.
+Cache headlines in JSON file.
+
+
+Response: List of dictionaries with title and link.
+
+Code Sandbox
+
+Function: execute_python_code(code, timeout=10)
+Description: Executes Python code in a sandboxed environment.
+Parameters:
+code (string): Python code to execute.
+timeout (int): Maximum execution time in seconds (default: 10).
+
+
+Process:
+Run code in a restricted environment with limited builtins and modules.
+Capture stdout and stderr.
+Return results within timeout.
+
+
+Response: Dictionary with success, output, and errors.
+
+File Processing
+Resume Builder
+
+Function: build_resume_pdf(details, filename)
+Description: Generates a PDF resume from user details.
+Parameters:
+details (dict): Dictionary containing resume fields (name, email, phone, etc.).
+filename (string): Output PDF file name.
+
+
+Process:
+Use FPDF to create a PDF with formatted sections.
+Apply theme colors based on user selection.
+
+
+Response: PDF file path.
+
+Error Handling
+
+All functions include try-except blocks to handle errors gracefully.
+Common errors include invalid inputs, API failures, and timeouts.
+Responses typically include user-friendly error messages.
+
+Security
+
+Passwords are hashed using SHA-256.
+Email verification uses 6-digit OTPs sent via SMTP (Gmail).
+API keys are stored in secrets.toml and loaded securely.
+Code sandbox restricts imports and builtins for safety.
+
+Extensibility
+To expose these functions as a REST API:
+
+Use a framework like FastAPI or Flask.
+Wrap functions in API endpoints (e.g., /signup, /chat, /weather).
+Secure endpoints with JWT or OAuth for authentication.
+
+Limitations
+
+No public REST API; functions are internal to Streamlit.
+Rate limits may apply to third-party APIs (e.g., OpenWeatherMap, Gemini).
+Offline mode relies on cached data, which may be outdated.
+
+Example Usage
+# Example: Get AI response
+messages = [{"role": "user", "content": "Hello, how can you help me?"}]
+response, model = get_ai_response(messages, model_preference="Gemini-2.5-Flash")
+print(f"Response from {model}: {response}")
+
+# Example: Get weather
+weather = get_weather("New York")
+if weather:
+    print(f"Weather in {weather['city']}: {weather['temp']}°C, {weather['description']}")
+
+Contact
+For support or contributions, contact the repository maintainers on GitHub.
